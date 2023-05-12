@@ -7,3 +7,6 @@ facing. The output is velocity and angular velocity.
 
 A higher level class handles spawning of environments and assigning of players 
 using a matchmaking system, it also handles updating players' ratings.
+
+MatchMaking class: run separate process updating the current matches and to 
+accept new matches from a shared dictionary. Each match yield the current position and rotation of the players after updating.
