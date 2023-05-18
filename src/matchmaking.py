@@ -4,11 +4,13 @@ import time
 
 import pygame
 
-from environment import Environment
+from environment import Environment, rotate_point
 from player import Player
 
 import sys
 import copy
+
+ROOT8 = math.sqrt(8)
 
 class MatchMaking:
     """
@@ -75,6 +77,13 @@ class MatchMaking:
             if key == "running":
                 continue
             
+            boundaries = [
+                [(1, -1), (1, 1)],   # right
+                [(1, 1), (-1, 1)],   # bottom
+                [(-1, 1), (-1, -1)], # left
+                [(-1, -1), (1, -1)], # top
+            ]
+            
             # Calculate render window position and dimensions.
             window_x, window_y, window_w, window_h = self.calculate_render_window_properties(render_offset, render_width, match_layout[0], render_index)
             
@@ -82,8 +91,19 @@ class MatchMaking:
             current_tick = status["current_tick"]
             current_time = status["current_time"]
             
-            pygame.draw.rect(display, (255, 255, 255), (window_x, window_y, \
-                window_w, window_h), width=1)
+            for line in boundaries:
+                map_pos_flipped0 = [(line[0][0] + 1) / 2, (-line[0][1] + 1) / 2]
+                map_pos_flipped1 = [(line[1][0] + 1) / 2, (-line[1][1] + 1) / 2]
+                
+                screen_x0 = window_x + map_pos_flipped0[0] * window_w
+                screen_y0 = window_y + map_pos_flipped0[1] * window_h
+                screen_x1 = window_x + map_pos_flipped1[0] * window_w
+                screen_y1 = window_y + map_pos_flipped1[1] * window_h
+                
+                pygame.draw.line(display, (255, 255, 255), (screen_x0, screen_y0), (screen_x1, screen_y1))
+            
+            #pygame.draw.rect(display, (255, 255, 255), (window_x, window_y, \
+            #    window_w, window_h), width=1)
             
             for player_id, player_data in status.items():
                 if not isinstance(player_id, int):
@@ -111,12 +131,34 @@ class MatchMaking:
                 for a in ray_angles:
                     line_start_x = screen_x
                     line_start_y = screen_y
-                    line_end_x = line_start_x + math.cos(a) * 100
-                    line_end_y = line_start_y - math.sin(a) * 100
+                    line_end_x = line_start_x + math.cos(a) * (window_w / 2) * ROOT8
+                    line_end_y = line_start_y - math.sin(a) * (window_w / 2) * ROOT8
+                    
                     pygame.draw.line(display, (0, 255, 255), (line_start_x, line_start_y), (line_end_x, line_end_y))
+                    
+                    alpha = math.atan2(line_end_y - line_start_y, line_end_x - line_start_x)
+                    """l1_start_rot = rotate_point(l1_start, math.pi / 2 - alpha)
+                    l1_end_rot   = rotate_point(l1_end, math.pi / 2 - alpha)
+                    
+                    l2_start_rot = rotate_point(l2_start, math.pi / 2 - alpha)
+                    l2_end_rot   = rotate_point(l2_end, math.pi / 2 - alpha)"""
+                    
+                    """for line in boundaries:
+                        map_pos_flipped0 = [(line[0][0] + 1) / 2, (-line[0][1] + 1) / 2]
+                        map_pos_flipped1 = [(line[1][0] + 1) / 2, (-line[1][1] + 1) / 2]
+                        
+                        map_pos_flipped0_rot = rotate_point(map_pos_flipped0, math.pi / 2 - alpha)
+                        map_pos_flipped1_rot = rotate_point(map_pos_flipped1, math.pi / 2 - alpha)
+                        
+                        screen_x0 = window_x + map_pos_flipped0_rot[0] * window_w
+                        screen_y0 = window_y + map_pos_flipped0_rot[1] * window_h
+                        screen_x1 = window_x + map_pos_flipped1_rot[0] * window_w
+                        screen_y1 = window_y + map_pos_flipped1_rot[1] * window_h
+                        
+                        pygame.draw.line(display, (0, 255, 0), (screen_x0, screen_y0), (screen_x1, screen_y1))"""
                 
                 # Render position text.
-                render_text_center(display, f"{map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
+                render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
             
             render_index += 1
     

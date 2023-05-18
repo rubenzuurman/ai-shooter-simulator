@@ -57,7 +57,13 @@ def main():
     
     return"""
     
-    mm = MatchMaking(ticks_per_second=10)
+    """from environment import test_function
+    
+    test_function()
+    
+    return"""
+    
+    mm = MatchMaking(ticks_per_second=10, num_rays=1)
     p1 = Player()
     p2 = Player()
     p3 = Player()
@@ -77,8 +83,8 @@ def main():
     font = pygame.font.SysFont("Courier New", 16)
     
     # Create window.
-    window_dimensions = (800, 600)
-    display = pygame.display.set_mode(window_dimensions)
+    window_dimensions = (800, 800)
+    display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
     
     # Start render loop.
     fps = 60
@@ -103,6 +109,10 @@ def main():
                     fps -= 10
                 if event.key == pygame.K_UP:
                     fps += 10
+            
+            if event.type == pygame.VIDEORESIZE:
+                window_dimensions = (event.w, event.h)
+                display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
         
         display.fill((0, 0, 0))
         

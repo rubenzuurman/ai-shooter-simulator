@@ -10,3 +10,6 @@ using a matchmaking system, it also handles updating players' ratings.
 
 MatchMaking class: run separate process updating the current matches and to 
 accept new matches from a shared dictionary. Each match yield the current position and rotation of the players after updating.
+
+13-05-2023
+Change of plan: I can't get intersections between lines working, so I might just ommit the whole idea of rays and give players the position of the opponent as well.
