@@ -57,11 +57,11 @@ def main():
     
     return"""
     
-    """from environment import test_function
+    from environment import test_cast_ray
     
-    test_function()
+    test_cast_ray()
     
-    return"""
+    return
     
     mm = MatchMaking(ticks_per_second=10, num_rays=1)
     p1 = Player()
@@ -76,7 +76,6 @@ def main():
     
     mm.add_player_to_queue(1)
     mm.add_player_to_queue(2)
-    
     
     pygame.init()
     pygame.font.init()
