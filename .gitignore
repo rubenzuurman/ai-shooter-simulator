@@ -1,2 +1,6 @@
 venv/
 __pycache__/
+
+# Files for checking if the tests are constructed correctly.
+src/test_visualizer_checker.py
+tests.pickle

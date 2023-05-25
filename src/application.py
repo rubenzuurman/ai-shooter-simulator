@@ -57,12 +57,6 @@ def main():
     
     return"""
     
-    from environment import test_cast_ray
-    
-    test_cast_ray()
-    
-    return
-    
     mm = MatchMaking(ticks_per_second=10, num_rays=1)
     p1 = Player()
     p2 = Player()
