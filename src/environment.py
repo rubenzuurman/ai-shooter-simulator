@@ -37,6 +37,17 @@ class Environment:
             [(-1, -1), (1, -1)], # top
         ]
         
+        """
+        Remove later:
+            1. Get list of intersections for each ray.
+            2. Get closest intersection for each ray.
+            3. Set distances for each ray in neural network input.
+            4. Set types of objects intersected with in neural network input.
+                E.g. wall=+1, enemy=-1, else=0
+            5. Get neural network output.
+            6. Update player properties.
+        """
+        
         ## For every player.
         for player in self.players:
             # Cast rays.
@@ -174,5 +185,38 @@ def cast_ray(l1, l2):
         return False, 0
     else:
         return True, y - l1_new[0][1]
+
+def cast_ray_circle(l1, c):
+    # l1: (origin, direction)
+    # c : (origin, radius)
+    # Move line and circle so that the line starts at the origin.
+    l1_start = l1[0]
+    l1_translate = [(l1_start[0] - l1_start[0], l1_start[1] - l1_start[1]), l1[1]]
+    c_start = c[0]
+    c_translate = [(c_start[0] - l1_start[0], c_start[1] - l1_start[1]), c[1]]
     
-    return True, -1
+    # Rotate line and circle so that the line is vertical.
+    rotate_angle = math.pi / 2 - l1[1]
+    l1_new = [rotate_point(l1_translate[0], rotate_angle), l1[1] + rotate_angle]
+    c_new = [rotate_point(c_translate[0], rotate_angle), c_translate[1]]
+    
+    # Check if circle is completely 'behind' the line.
+    if c_new[0][1] < -c_new[1]:
+        return False, 0
+    
+    # Check if circle x is less than -radius or greater than +radius.
+    if c_new[0][0] < -c_new[1]:
+        return False, 0
+    if c_new[0][0] > c_new[1]:
+        return False, 0
+    
+    # Check if line start is in the circle.
+    circle_dist_from_origin_sq = c_new[0][0] * c_new[0][0] + c_new[0][1] * c_new[0][1]
+    if circle_dist_from_origin_sq < c_new[1] * c_new[1]:
+        return True, 0
+    
+    # There is an intersection here, calculate intersection point and return distance.
+    x = 0
+    y_pos = c_new[0][1] + math.sqrt(c_new[1] ** 2 - (x - c_new[0][0]) ** 2)
+    y_neg = c_new[0][1] - math.sqrt(c_new[1] ** 2 - (x - c_new[0][0]) ** 2)
+    return True, min(y_neg, y_pos)
