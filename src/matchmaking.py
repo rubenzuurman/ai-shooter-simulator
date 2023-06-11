@@ -28,6 +28,8 @@ class MatchMaking:
     
     def __init__(self, player_size=0.2, ticks_per_second=50, num_rays=5, \
         ray_sep_angle=0.1):
+        manager = mp.Manager()
+        
         # Player objects.
         self.players = []
         # Player ids and ranking scores.
@@ -35,7 +37,6 @@ class MatchMaking:
         # Player ids in queue.
         self.queue = []
         # Environments containing matches (list of environments).
-        manager = mp.Manager()
         self.matches = manager.dict()
         
         # Player size (the environment size is 2.0), ticks per second, number 

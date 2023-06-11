@@ -13,7 +13,7 @@ class Player:
         self.rotation = 0 # angle
         self.health   = rnd.randint(0, 100)
     
-    def update(self, rays):
+    def update(self, input_array):
         ns = math.cos(self.rotation)
         ew = math.sin(self.rotation)
         

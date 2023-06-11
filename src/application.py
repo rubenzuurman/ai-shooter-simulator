@@ -57,7 +57,7 @@ def main():
     
     return"""
     
-    mm = MatchMaking(ticks_per_second=10, num_rays=1)
+    mm = MatchMaking(ticks_per_second=10, num_rays=3)
     p1 = Player()
     p2 = Player()
     p3 = Player()

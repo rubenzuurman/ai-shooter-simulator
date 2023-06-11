@@ -41,38 +41,100 @@ class Environment:
         Remove later:
             1. Get list of intersections for each ray.
             2. Get closest intersection for each ray.
-            3. Set distances for each ray in neural network input.
-            4. Set types of objects intersected with in neural network input.
-                E.g. wall=+1, enemy=-1, else=0
-            5. Get neural network output.
-            6. Update player properties.
+            3. Create network input array from distances for each ray and for each 
+                type of object. E.g. at 3 rays and 3 object types it would be: [ray1_dist_to_obj1, ray1_dist_to_obj2, ray1_dist_to_obj3, ray2_dist_to_obj1, ray2_dist_to_obj2, ray2_dist_to_obj3, ray3_dist_to_obj1, ray3_dist_to_obj2, ray3_dist_to_obj3]
+            4. Get neural network output.
+            5. Update player properties.
+        
+        Total neural network inputs:
+            - position: x/y             2
+            - orientation: n/s, e/w     4
+            - ray distance per type     num_types * num_rays
+        Total: 6 + num_types * num_rays
+            num_types = 3 in this case (opponent, environment object, ally)
         """
         
         ## For every player.
         for player in self.players:
-            # Cast rays.
+            # Initialize intersect results list.
+            ray_results = [[] for _ in range(self.num_rays)]
+            
+            # Set up ray angles.
             start_angle = player.rotation - ((self.num_rays - 1) / 2) * self.ray_sep_angle
             ray_angles = [start_angle + i * self.ray_sep_angle for i in range(self.num_rays)]
-            for ray_angle in ray_angles:
-                # Calculate intersection between ray line and environment boundary.
-                player_x = player.position[0]
-                player_y = player.position[1]
-                ray_end_x = player_x + math.cos(ray_angle) * ROOT8
-                ray_end_y = player_y + math.sin(ray_angle) * ROOT8
-                
-                # Left boundary.
-                intersections = []
+            
+            # Cast rays.
+            for ray_index, ray_angle in enumerate(ray_angles):
+                # Calculate intersection between ray line and environment boundaries.
                 for line in boundaries:
-                    intersects, intersect_distance = cast_ray(l1=[(player_x, player_y), ray_angle], l2=line)
+                    intersects, intersect_distance = cast_ray(l1=[player.position, ray_angle], l2=line)
                     if intersects:
-                        intersections.append(intersect_distance)
-                if len(intersections) > 0:
-                    print(player.id, intersections)
-                    sys.stdout.flush()
+                        ray_results[ray_index].append([intersect_distance, 0])
+                
+                # Calculate intersection between ray line and opponent circles.
+                for other_player in self.players:
+                    # Skip self.
+                    if player.id == other_player.id:
+                        continue
+                    
+                    # Get player circle.
+                    circle_position = other_player.position
+                    circle_radius = self.player_size / 2 # Player size is diameter
+                    
+                    intersects, intersect_distance = cast_ray_circle(l1=[player.position, ray_angle], c=[circle_position, circle_radius])
+                    if intersects:
+                        ray_results[ray_index].append([intersect_distance, -1])
+            
+            # Get closest intersection for each ray.
+            closest_intersections = []
+            for ray_index, ray_result in enumerate(ray_results):
+                # Skip rays with no intersections.
+                if len(ray_result) == 0:
+                    closest_intersections.append(None)
+                    continue
+                
+                # Find closest intersection.
+                closest_intersect_distance = -1
+                closest_intersect_type = 0
+                first_intersection  = True
+                for intersection in ray_result:
+                    if first_intersection:
+                        closest_intersect_distance = intersection[0]
+                        closest_intersect_type = intersection[1]
+                        first_intersection = False
+                    else:
+                        if intersection[0] < closest_intersect_distance:
+                            closest_intersect_distance = intersection[0]
+                            closest_intersect_type = intersection[1]
+                
+                # Append closest intersection to list.
+                closest_intersections.append((closest_intersect_distance, \
+                    closest_intersect_type))
+            
+            # Create neural network input array (if seeing nothing: set to 0, 
+            # also useful when inside someone else).
+            input_array = []
+            for intersection in closest_intersections:
+                if intersection is None:
+                    input_array.extend([0, 0, 0])
+                else:
+                    if intersection[1] == 1:
+                        # Ally
+                        input_array.extend([intersection[0] / ROOT8, 0, 0])
+                    elif intersection[1] == 0:
+                        # Environment object
+                        input_array.extend([0, intersection[0] / ROOT8, 0])
+                    elif intersection[1] == -1:
+                        # Opponent
+                        input_array.extend([0, 0, intersection[0] / ROOT8])
+                    else:
+                        # Should not be reached.
+                        print(f"[ERROR] This state should not be reached: intersection_target={intersection[1]}")
+                        input_array.extend([0, 0, 0])
             
             # Get velocity and angular velocity from players by calling the 
             # update method.
-            velocity, angular_velocity = player.update([0, 0, 0, 0, 0])
+            velocity, angular_velocity = player.update(input_array)
             
             # Check for collisions.
             vx = velocity * math.cos(player.rotation)

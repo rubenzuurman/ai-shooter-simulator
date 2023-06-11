@@ -13,3 +13,6 @@ accept new matches from a shared dictionary. Each match yield the current positi
 
 13-05-2023
 Change of plan: I can't get intersections between lines working, so I might just ommit the whole idea of rays and give players the position of the opponent as well.
+
+11-06-2023
+I implemented intersections between lines and intersections between lines and circles, so the above note 'Change of plan' no longer applies.
