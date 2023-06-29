@@ -46,18 +46,7 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
     display.blit(text_surface, (position_x, position_y))
 
 def main():
-    """p1 = Player()
-    p2 = Player()
-    
-    env = Environment(ticks=20, num_rays=6, rays_sep=1)
-    env.add_player(p1)
-    env.add_player(p2)
-    
-    env.step()
-    
-    return"""
-    
-    mm = MatchMaking(ticks_per_second=10, num_rays=3)
+    mm = MatchMaking(ticks_per_second=10)
     p1 = Player()
     p2 = Player()
     p3 = Player()

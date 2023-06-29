@@ -26,12 +26,11 @@ class MatchMaking:
     Difference in points at 90% winrate: 100
     """
     
-    def __init__(self, player_size=0.2, ticks_per_second=50, num_rays=5, \
-        ray_sep_angle=0.1):
+    def __init__(self, player_size=0.2, ticks_per_second=50):
         manager = mp.Manager()
         
         # Player objects.
-        self.players = []
+        self.players = {}
         # Player ids and ranking scores.
         self.leaderboard = {}
         # Player ids in queue.
@@ -39,13 +38,9 @@ class MatchMaking:
         # Environments containing matches (list of environments).
         self.matches = manager.dict()
         
-        # Player size (the environment size is 2.0), ticks per second, number 
-        # of rays, and ray separation angle.
+        # Player size (the environment size is 2.0) and ticks per second.
         self.player_size = player_size
         self.ticks_per_second = ticks_per_second
-        # Make sure number of rays is always odd
-        self.num_rays = num_rays if num_rays % 2 == 1 else num_rays + 1
-        self.ray_sep_angle = ray_sep_angle
         
         # Keep track of match number.
         self.match_number = 0
@@ -127,8 +122,8 @@ class MatchMaking:
                 pygame.draw.rect(display, (150, 10, 10), (healthbar_start_mid, screen_y - 25, 50 - healthbar_green_width, 10))
                 
                 # Render rays.
-                start_angle = player_data["rot"] - ((self.num_rays - 1) / 2) * self.ray_sep_angle
-                ray_angles = [start_angle + i * self.ray_sep_angle for i in range(self.num_rays)]
+                start_angle = player_data["rot"] - ((player_data["num_rays"] - 1) / 2) * player_data["ray_sep_angle"]
+                ray_angles = [start_angle + i * player_data["ray_sep_angle"] for i in range(player_data["num_rays"])]
                 for a in ray_angles:
                     line_start_x = screen_x
                     line_start_y = screen_y
@@ -192,7 +187,7 @@ class MatchMaking:
                     p1_ranking = self.leaderboard[p1]
                     p2_ranking = self.leaderboard[p2]
                     if abs(p1_ranking - p2_ranking) <= 400:
-                        env = Environment(player_size=self.player_size, ticks_per_second=self.ticks_per_second, num_rays=self.num_rays, ray_sep_angle=self.ray_sep_angle)
+                        env = Environment(player_size=self.player_size, ticks_per_second=self.ticks_per_second)
                         env.add_player(copy.deepcopy(self.players[p1]))
                         env.add_player(copy.deepcopy(self.players[p2]))
                         self.matches[self.match_number] = env
@@ -215,8 +210,8 @@ class MatchMaking:
                 print(f"Matches: {self.matches}")
         
         # Update ranking system if any match has finished.
-        for index, match in self.matches.items():
-            match.step()
+        #for index, match in self.matches.items():
+        #    match.step()
     
     def add_player(self, player):
         if not isinstance(player, Player):
@@ -224,7 +219,7 @@ class MatchMaking:
             return
         
         # Add player to ranking system
-        self.players.append(player)
+        self.players[player.id]     = player
         self.leaderboard[player.id] = 1000
         
         print(f"Leaderboard: {self.leaderboard}")
@@ -232,7 +227,7 @@ class MatchMaking:
     def add_player_to_queue(self, player_id):
         # Check if the player exists
         player_exists = False
-        for player in self.players:
+        for _, player in self.players.items():
             if player.id == player_id:
                 player_exists = True
                 break

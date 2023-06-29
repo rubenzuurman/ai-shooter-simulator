@@ -1,17 +1,25 @@
 import math
 import random as rnd
 
+DEFAULT_NUM_RAYS = 5
+DEFAULT_RAY_SEP_ANGLE = 0.1
+
 class Player:
     
     PLAYER_ID = 0
     
-    def __init__(self):
+    def __init__(self, num_rays=DEFAULT_NUM_RAYS, ray_sep_angle=DEFAULT_RAY_SEP_ANGLE):
         self.id = Player.PLAYER_ID
         Player.PLAYER_ID += 1
         
         self.position = [0, 0] # x, y
         self.rotation = 0 # angle
         self.health   = rnd.randint(0, 100)
+        
+        # Number of rays and ray separation angle.
+        # Make sure number of rays is always odd.
+        self.num_rays = num_rays if num_rays % 2 == 1 else num_rays + 1
+        self.ray_sep_angle = ray_sep_angle
     
     def update(self, input_array):
         ns = math.cos(self.rotation)
