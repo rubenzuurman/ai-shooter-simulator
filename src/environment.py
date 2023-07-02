@@ -18,6 +18,8 @@ class Environment:
         self.ticks_per_second = ticks_per_second
         
         self.current_tick = 0
+        
+        self.finished = False
     
     def add_player(self, player):
         # Randomize position and rotation.
@@ -25,7 +27,14 @@ class Environment:
         player.randomize_rotation()
         self.players.append(player)
     
+    def is_finished(self):
+        return self.finished
+    
     def step(self):
+        # Skip function if the match is finished.
+        if self.is_finished():
+            return
+        
         delta_time = 1 / self.ticks_per_second
         
         boundaries = [
@@ -52,8 +61,13 @@ class Environment:
             num_types = 3 in this case (opponent, environment object, ally)
         """
         
-        ## For every player.
+        # Get network output of every player.
+        network_outputs = {}
         for player in self.players:
+            # Check if the player is alive.
+            if player.health <= 0:
+                continue
+            
             # Initialize intersect results list.
             ray_results = [[] for _ in range(player.num_rays)]
             
@@ -134,7 +148,87 @@ class Environment:
             
             # Get velocity and angular velocity from players by calling the 
             # update method.
-            velocity, angular_velocity = player.update(input_array)
+            velocity, angular_velocity, activate_weapon = player.update(input_array)
+            network_outputs[player.id] = {"vel": velocity, "ang_vel": angular_velocity, "activate_weapon": activate_weapon}
+        
+        # Check if weapons are activated.
+        for player_id, player_network_output in network_outputs.items():
+            # Check if this players weapon needs to be fired.
+            if player_network_output["activate_weapon"] <= 0:
+                continue
+            
+            # Get player object.
+            player = None
+            for p in self.players:
+                if p.id == player_id:
+                    player = p
+            
+            # Check if the player is alive.
+            if player.health <= 0:
+                continue
+            
+            # Weapon is activated here. Calculate distance to all objects in 
+            # the direction the player is facing.
+            # Keep track of closest intersection.
+            closest_intersect_type = "" # "object" or "player"
+            closest_intersect_distance = -1
+            closest_intersect_player_id = -1
+            
+            # Calculate intersection between ray line and environment boundaries.
+            for line in boundaries:
+                intersects, intersect_distance = cast_ray(l1=[player.position, player.rotation], l2=line)
+                if intersects:
+                    if closest_intersect_distance == -1:
+                        closest_intersect_type = "object"
+                        closest_intersect_distance = intersect_distance
+                        closest_intersect_player_id = -1
+                    else:
+                        if intersect_distance < closest_intersect_distance:
+                            closest_intersect_type = "object"
+                            closest_intersect_distance = intersect_distance
+                            closest_intersect_player_id = -1
+            
+            # Calculate intersection between ray line and opponent circles.
+            for other_player in self.players:
+                # Skip self.
+                if player.id == other_player.id:
+                    continue
+                
+                # Get player circle.
+                circle_position = other_player.position
+                circle_radius = self.player_size / 2 # Player size is diameter
+                
+                intersects, intersect_distance = cast_ray_circle(l1=[player.position, player.rotation], c=[circle_position, circle_radius])
+                if intersects:
+                    if closest_intersect_distance == -1:
+                        closest_intersect_type = "player"
+                        closest_intersect_distance = intersect_distance
+                        closest_intersect_player_id = other_player.id
+                    else:
+                        if intersect_distance < closest_intersect_distance:
+                            closest_intersect_type = "player"
+                            closest_intersect_distance = intersect_distance
+                            closest_intersect_player_id = other_player.id
+            
+            # Check if any player was damaged.
+            if closest_intersect_type == "player":
+                if player.can_use_weapon():
+                    player.use_weapon()
+                    for temp_player in self.players:
+                        if temp_player.id == closest_intersect_player_id:
+                            temp_player.remove_health(player.bullet_damage)
+        
+        # Move players.
+        for player_id, player_network_output in network_outputs.items():
+            # Get player object.
+            player = None
+            for p in self.players:
+                if p.id == player_id:
+                    player = p
+            
+            # Check if the player is alive.
+            if player.health <= 0:
+                continue
             
             # Check for collisions.
             vx = velocity * math.cos(player.rotation)
@@ -154,24 +248,36 @@ class Environment:
             player.position = [new_x, new_y]
             player.rotation += angular_velocity * delta_time
         
-        ## For every player.
-        # Shoot bullets if necessary.
-        
-        # Update player health.
-        
-        ## End
-        # Report back player positions and rotations and health and if the 
-        # match is finished or not.
-        
+        # Increment simulation tick.
         self.current_tick += 1
         
+        # Store outcome in result dict if needed.
         result = {}
+        players_health = [(player.id, player.health) for player in self.players]
+        number_of_players_alive = sum([tup[1] > 0 for tup in players_health])
+        if number_of_players_alive == 1:
+            for p in players_health:
+                if p[1] > 0:
+                    result["winner_id"] = p[0]
+                else:
+                    result["loser_id"]  = p[0]
+            result["outcome"] = "no tie"
+            self.finished = True
+        elif number_of_players_alive == 0:
+            result["outcome"] = "tie"
+            self.finished = True
+        else:
+            self.finished = False
+        
+        # Add player positions, rotations, health, and other metadata to result dict.
         for player in self.players:
-            result[player.id] = {"pos": player.position, "rot": player.rotation, "hp": player.health, "num_rays": player.num_rays, "ray_sep_angle": player.ray_sep_angle}
+            result[player.id] = {"pos": player.position, "rot": player.rotation, "hp": player.health, "num_rays": player.num_rays, "ray_sep_angle": player.ray_sep_angle, "last_weapon_activation": player.last_weapon_activation}
+        
+        # Add simulation statistics to result dict and return dict.
         result["ticks_per_second"] = self.ticks_per_second
         result["current_tick"] = self.current_tick
         result["current_time"] = self.current_tick / self.ticks_per_second
-        return result, False
+        return result
 
 def rotate_point(point, alpha):
     x, y = point

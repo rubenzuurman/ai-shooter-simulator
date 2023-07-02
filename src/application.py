@@ -65,7 +65,7 @@ def main():
     font = pygame.font.SysFont("Courier New", 16)
     
     # Create window.
-    window_dimensions = (800, 800)
+    window_dimensions = (1920, 1080)
     display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
     
     # Start render loop.
@@ -87,6 +87,19 @@ def main():
                     mm.add_player_to_queue(0)
                     mm.add_player_to_queue(3)
                 
+                if event.key == pygame.K_0:
+                    print("Adding player 0 to queue")
+                    mm.add_player_to_queue(0)
+                if event.key == pygame.K_1:
+                    print("Adding player 1 to queue")
+                    mm.add_player_to_queue(1)
+                if event.key == pygame.K_2:
+                    print("Adding player 2 to queue")
+                    mm.add_player_to_queue(2)
+                if event.key == pygame.K_3:
+                    print("Adding player 3 to queue")
+                    mm.add_player_to_queue(3)
+                
                 if event.key == pygame.K_DOWN:
                     fps -= 10
                 if event.key == pygame.K_UP:
@@ -104,6 +117,20 @@ def main():
         fpscounter.tick()
         actual_fps = fpscounter.get_fps()
         render_text(display, text=f"fps: {actual_fps} (target: {fps})", position=(10, 10), font=font)
+        
+        player_ids = [player.id for player in mm.players.values()]
+        render_text(display, f"Players: {player_ids}", (10, 30), font)
+        render_text(display, f"Queue: {mm.queue}", (10, 50), font)
+        
+        counter = 0
+        render_text(display, "Leaderboard", (10, 70), font)
+        for player_id, score in mm.leaderboard.items():
+            render_text(display, f"{player_id}: {score}", (10, 90 + 20 * counter), font)
+            counter += 1
+        
+        """render_text(display, f"Total players: {len(player_ids)}", (10, 70), font)
+        render_text(display, f"In queue:      {len(mm.queue)}", (10, 90), font)
+        render_text(display, f"In game:       {len(player_ids) - len(mm.queue)}", (10, 110), font)"""
         
         pygame.display.flip()
         clock.tick(fps)

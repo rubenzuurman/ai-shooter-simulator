@@ -1,20 +1,32 @@
 import math
 import random as rnd
+import time
 
 DEFAULT_NUM_RAYS = 5
 DEFAULT_RAY_SEP_ANGLE = 0.1
+
+# Maximum player health (also start player health)
+MAX_HEALTH = 100
+# Bullet damage, max player health is 100
+BULLET_DAMAGE = 50
+# Weapon cooldown in seconds
+WEAPON_COOLDOWN = 1.0
 
 class Player:
     
     PLAYER_ID = 0
     
-    def __init__(self, num_rays=DEFAULT_NUM_RAYS, ray_sep_angle=DEFAULT_RAY_SEP_ANGLE):
+    def __init__(self, num_rays=DEFAULT_NUM_RAYS, ray_sep_angle=DEFAULT_RAY_SEP_ANGLE, initial_health=MAX_HEALTH, bullet_damage=BULLET_DAMAGE, weapon_cooldown=WEAPON_COOLDOWN):
         self.id = Player.PLAYER_ID
         Player.PLAYER_ID += 1
         
         self.position = [0, 0] # x, y
         self.rotation = 0 # angle
-        self.health   = rnd.randint(0, 100)
+        self.health   = initial_health
+        self.bullet_damage = bullet_damage
+        self.weapon_cooldown = weapon_cooldown
+        
+        self.last_weapon_activation = 0
         
         # Number of rays and ray separation angle.
         # Make sure number of rays is always odd.
@@ -25,8 +37,18 @@ class Player:
         ns = math.cos(self.rotation)
         ew = math.sin(self.rotation)
         
-        # Return velocity and angular velocity
-        return 0.1, 0
+        # Return velocity, angular velocity, and activate weapon output 
+        # (probably (at least currently) active when value is greater than 0).
+        return 0.1, 0, 0.5
+    
+    def use_weapon(self):
+        self.last_weapon_activation = time.time()
+    
+    def can_use_weapon(self):
+        return time.time() - self.last_weapon_activation > self.weapon_cooldown
+    
+    def remove_health(self, amount):
+        self.health -= amount
     
     def randomize_position(self):
         self.position = [rnd.randint(0, 2000) / 1000 - 1, rnd.randint(0, 2000) / 1000 - 1]

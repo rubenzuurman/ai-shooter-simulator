@@ -48,6 +48,7 @@ class MatchMaking:
         # Dictionary containing status reports of the matches from the other process.
         self.status_dict = manager.dict()
         self.status_dict["running"] = True
+        self.status_dict["ticks_per_second"] = ticks_per_second
         
         # Start process handling matches.
         self.match_proc = mp.Process(target=handle_matches, args=(self.matches, self.status_dict))
@@ -65,12 +66,12 @@ class MatchMaking:
                 match_layout = (counter, counter)
             counter += 1
         
-        render_width = window_dimensions[0] * 0.8
-        render_offset = [(window_dimensions[0] - render_width) / 2, 50]
+        render_width = min(window_dimensions[0] * 0.8, window_dimensions[1] * 0.8)
+        render_offset = [(window_dimensions[0] - render_width) / 2, 100]
         
         render_index = 0
         for key, status in self.status_dict.items():
-            if key == "running":
+            if key == "running" or key == "ticks_per_second":
                 continue
             
             boundaries = [
@@ -153,6 +154,11 @@ class MatchMaking:
                         
                         pygame.draw.line(display, (0, 255, 0), (screen_x0, screen_y0), (screen_x1, screen_y1))"""
                 
+                fadetime = 0.25
+                if time.time() - player_data["last_weapon_activation"] <= fadetime:
+                    opacity = max(time.time() - player_data["last_weapon_activation"], 0) / fadetime
+                    pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * window_w / 2, screen_y - math.sin(player_data["rot"]) * window_w / 2), width=5)
+                
                 # Render position text.
                 render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
             
@@ -210,8 +216,32 @@ class MatchMaking:
                 print(f"Matches: {self.matches}")
         
         # Update ranking system if any match has finished.
-        #for index, match in self.matches.items():
-        #    match.step()
+        matches_to_remove = []
+        for index, match in self.matches.items():
+            if match.is_finished():
+                player_ids = [player.id for player in match.players]
+                
+                if self.status_dict[index]["outcome"] == "tie":
+                    print(f"Match {index} between players {tuple(player_ids)} ended in '{self.status_dict[index]['outcome']}'.")
+                    # do nothing
+                elif self.status_dict[index]["outcome"] == "no tie":
+                    winner_id = self.status_dict[index]["winner_id"]
+                    loser_id  = self.status_dict[index]["loser_id"]
+                    
+                    print(f"Match {index} between players {tuple(player_ids)} ended in '{self.status_dict[index]['outcome']}' ({winner_id} won).")
+                    
+                    # Give points to winner.
+                    self.leaderboard[winner_id] += 50
+                    self.leaderboard[loser_id]  -= 50
+                
+                # Queue match to be removed.
+                matches_to_remove.append(index)
+        
+        # Remove finished matches.
+        for index in matches_to_remove:
+            del self.matches[index]
+            del self.status_dict[index]
+            print(f"Removed match {index}.")
     
     def add_player(self, player):
         if not isinstance(player, Player):
@@ -256,20 +286,21 @@ class MatchMaking:
         self.match_proc.join()
 
 def handle_matches(matches_dict, status_dict):
+    clock = pygame.time.Clock()
+    
     while True:
         for index, match in matches_dict.items():
-            #if index in status_dict.keys():
-            #    print("before", status_dict[index])
-            result, finished = match.step()
+            # Run environment step.
+            result = match.step()
+            
+            # Update static dict.
             status_dict[index] = result
-            #print("after ", status_dict[index])
-            #print("result", result)
+            
+            # Replace match in matches dict to write changes made by the step() function.
             matches_dict[index] = match
         
-        #print()
-        #sys.stdout.flush()
-        
-        time.sleep(0.1)
+        # Tick clock (pygame clock is good enough for now).
+        clock.tick(status_dict["ticks_per_second"])
         if not status_dict["running"]:
             break
 
