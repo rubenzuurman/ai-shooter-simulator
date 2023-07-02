@@ -17,9 +17,11 @@ class Player:
     PLAYER_ID = 0
     
     def __init__(self, num_rays=DEFAULT_NUM_RAYS, ray_sep_angle=DEFAULT_RAY_SEP_ANGLE, initial_health=MAX_HEALTH, bullet_damage=BULLET_DAMAGE, weapon_cooldown=WEAPON_COOLDOWN):
+        # Set player id.
         self.id = Player.PLAYER_ID
         Player.PLAYER_ID += 1
         
+        # Set other player properties.
         self.position = [0, 0] # x, y
         self.rotation = 0 # angle
         self.health   = initial_health
@@ -27,6 +29,10 @@ class Player:
         self.weapon_cooldown = weapon_cooldown
         
         self.last_weapon_activation = 0
+        
+        # Set player name and color.
+        self.name = get_random_name()
+        self.color = get_random_color()
         
         # Player metadata, used to keep track of intersect distances for now.
         self.metadata = {"intersect_distances": []}
@@ -56,6 +62,12 @@ class Player:
     def get_metadata(self):
         return self.metadata
     
+    def get_name(self):
+        return self.name
+    
+    def get_color(self):
+        return self.color
+    
     def randomize_position(self):
         self.position = [rnd.randint(0, 2000) / 1000 - 1, rnd.randint(0, 2000) / 1000 - 1]
     
@@ -64,3 +76,17 @@ class Player:
     
     def __str__(self):
         return f"Player[id: {self.id}, hp: {self.health}, x: {self.position[0]:.2f}, y: {self.position[1]:.2f}, n/s: {self.rotation[0]:.2f}, e/w: {self.rotation[1]:.2f}]"
+
+def get_random_name():
+    with open("doc/random_names.txt", "r") as file:
+        lines = file.readlines()
+    
+    return lines[rnd.randint(0, len(lines) - 1)].strip()
+
+def get_random_color():
+    with open("doc/random_colors.txt", "r") as file:
+        lines = file.readlines()
+    
+    random_color = lines[rnd.randint(0, len(lines) - 1)].strip()
+    color_rgb_str = random_color[1:-1].split(",")
+    return tuple(map(int, color_rgb_str))

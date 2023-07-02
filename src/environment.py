@@ -4,6 +4,9 @@ import sys
 
 ROOT8 = math.sqrt(8)
 
+# Maximum match duration in seconds.
+MAX_MATCH_DURATION = 30.0
+
 class Environment:
     
     ENVIRONMENT_ID = 0
@@ -273,7 +276,11 @@ class Environment:
             result["outcome"] = "tie"
             self.finished = True
         else:
-            self.finished = False
+            if (self.current_tick / self.ticks_per_second) >= MAX_MATCH_DURATION:
+                self.finished = True
+                result["outcome"] = "tie"
+            else:
+                self.finished = False
         
         # Add player positions, rotations, health, and other metadata to result dict.
         for player in self.players:

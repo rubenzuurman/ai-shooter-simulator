@@ -6,6 +6,8 @@ from environment import Environment
 from matchmaking import MatchMaking
 from player import Player
 
+TICKS_PER_SECOND = 20
+
 class FPSCounter:
     
     def __init__(self):
@@ -46,7 +48,7 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
     display.blit(text_surface, (position_x, position_y))
 
 def main():
-    mm = MatchMaking(ticks_per_second=10)
+    mm = MatchMaking(ticks_per_second=TICKS_PER_SECOND)
     """p1 = Player()
     p2 = Player()
     p3 = Player()
@@ -57,7 +59,7 @@ def main():
     mm.add_player(p3)
     mm.add_player(p4)"""
     
-    [mm.add_player(Player()) for _ in range(10)]
+    num_players = len([mm.add_player(Player()) for _ in range(20)])
     
     mm.add_player_to_queue(1)
     mm.add_player_to_queue(2)
@@ -88,6 +90,9 @@ def main():
                     print("Space pressed")
                     mm.add_player_to_queue(0)
                     mm.add_player_to_queue(3)
+                    
+                    for i in range(num_players):
+                        mm.add_player_to_queue(i)
                 
                 if event.key == pygame.K_0:
                     print("Adding player 0 to queue")
@@ -152,8 +157,11 @@ def main():
         # Render leaderboard.
         counter = 0
         render_text(display, "Leaderboard", (10, 120), font)
-        for player_id, score in mm.leaderboard.items():
-            render_text(display, f"    {player_id}: {score}", (10, 140 + 20 * counter), font)
+        leaderboard_sorted = sorted([(k, v) for k, v in mm.leaderboard.items()], key=lambda x: -x[1])
+        for player_id, score in leaderboard_sorted:
+            player_name = mm.players[player_id].get_name()
+            player_color = mm.players[player_id].get_color()
+            render_text(display, f"    {player_name}: {score}", (10, 140 + 20 * counter), font, player_color)
             counter += 1
         
         pygame.display.flip()

@@ -16,3 +16,7 @@ Change of plan: I can't get intersections between lines working, so I might just
 
 11-06-2023
 I implemented intersections between lines and intersections between lines and circles, so the above note 'Change of plan' no longer applies.
+
+02-07-2023
+Random names source: https://www.rong-chang.com/namesdict/popular_names.htm
+Random colors source: https://www.rapidtables.com/web/color/RGB_Color.html

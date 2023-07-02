@@ -103,9 +103,6 @@ class MatchMaking:
                 
                 pygame.draw.line(display, (255, 255, 255), (screen_x0, screen_y0), (screen_x1, screen_y1))
             
-            #pygame.draw.rect(display, (255, 255, 255), (window_x, window_y, \
-            #    window_w, window_h), width=1)
-            
             for player_id, player_data in status.items():
                 if not isinstance(player_id, int):
                     continue
@@ -117,7 +114,7 @@ class MatchMaking:
                 screen_y = window_y + map_position_flipped[1] * window_h
                 
                 # Render player.
-                pygame.draw.circle(display, (0, 100, 0), (screen_x, screen_y), window_w / 2 * self.player_size / 2, width=2)
+                pygame.draw.circle(display, self.players[player_id].get_color(), (screen_x, screen_y), window_w / 2 * self.player_size / 2, width=2)
                 
                 # Render healthbar.
                 healthbar_green_width = (player_data["hp"] / 100) * 50
@@ -136,7 +133,7 @@ class MatchMaking:
                     line_end_x = line_start_x + math.cos(a) * r * (window_w / 2)
                     line_end_y = line_start_y - math.sin(a) * r * (window_w / 2)
                     
-                    pygame.draw.line(display, (0, 255, 255), (line_start_x, line_start_y), (line_end_x, line_end_y))
+                    pygame.draw.line(display, self.players[player_id].get_color(), (line_start_x, line_start_y), (line_end_x, line_end_y))
                     
                     alpha = math.atan2(line_end_y - line_start_y, line_end_x - line_start_x)
                     """l1_start_rot = rotate_point(l1_start, math.pi / 2 - alpha)
@@ -162,11 +159,28 @@ class MatchMaking:
                 laser_length = ray_intersect_distances[(len(ray_intersect_distances) - 1) // 2]
                 fadetime = 0.25
                 if time.time() - player_data["last_weapon_activation"] <= fadetime:
-                    opacity = max(time.time() - player_data["last_weapon_activation"], 0) / fadetime
+                    opacity = max(time.time() - player_data["last_weapon_activation"], 0.0) / fadetime
+                    opacity = min(opacity, 1.0)
                     pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * laser_length * window_w / 2, screen_y - math.sin(player_data["rot"]) * laser_length * window_w / 2), width=5)
                 
                 # Render position text.
                 render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
+            
+            # Render match number and participants.
+            player_ids = [k for k in status.keys() if isinstance(k, int)]
+            render_match_text = True
+            if window_w > 350:
+                current_font = pygame.font.SysFont("Courier New", 16)
+            elif window_w > 250:
+                current_font = pygame.font.SysFont("Courier New", 14)
+            elif window_w > 200:
+                current_font = pygame.font.SysFont("Courier New", 12)
+            elif window_w > 160:
+                current_font = pygame.font.SysFont("Courier New", 8)
+            else:
+                render_match_text = False
+            if render_match_text:
+                render_text(display, f"Match {key}: {self.players[player_ids[0]].get_name()} vs {self.players[player_ids[1]].get_name()}", (window_x + 5, window_y + 5), current_font)
             
             render_index += 1
     
