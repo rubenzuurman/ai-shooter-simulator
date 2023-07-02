@@ -2,6 +2,8 @@ import math
 
 import sys
 
+from simple_player_rotate_shoot import SimplePlayerRotateShoot
+
 ROOT8 = math.sqrt(8)
 
 # Maximum match duration in seconds.
@@ -127,7 +129,7 @@ class Environment:
                     closest_intersect_type))
             
             # Set player metadata intersect distance of rays.
-            player.metadata["intersect_distances"] = [tup[0] for tup in closest_intersections]
+            player.metadata["intersect_distances"] = [tup[0] if not (tup is None) else 0 for tup in closest_intersections]
             
             # Create neural network input array (if seeing nothing: set to 0, 
             # also useful when inside someone else).
@@ -238,6 +240,10 @@ class Environment:
             # Check if the player is alive.
             if player.health <= 0:
                 continue
+            
+            # Extract velocity and angular velocity from player network output.
+            velocity = player_network_output["vel"]
+            angular_velocity = player_network_output["ang_vel"]
             
             # Check for collisions.
             vx = velocity * math.cos(player.rotation)

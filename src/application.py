@@ -5,6 +5,7 @@ import pygame
 from environment import Environment
 from matchmaking import MatchMaking
 from player import Player
+from simple_player_rotate_shoot import SimplePlayerRotateShoot
 
 TICKS_PER_SECOND = 20
 
@@ -49,20 +50,24 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
 
 def main():
     mm = MatchMaking(ticks_per_second=TICKS_PER_SECOND)
-    """p1 = Player()
-    p2 = Player()
-    p3 = Player()
-    p4 = Player()
     
-    mm.add_player(p1)
-    mm.add_player(p2)
-    mm.add_player(p3)
-    mm.add_player(p4)"""
+    num_players = len([mm.add_player(Player()) for _ in range(5)])
     
-    num_players = len([mm.add_player(Player()) for _ in range(20)])
+    mm.add_player(SimplePlayerRotateShoot())
+    mm.add_player(SimplePlayerRotateShoot())
     
-    mm.add_player_to_queue(1)
-    mm.add_player_to_queue(2)
+    num_players = len([mm.add_player(Player()) for _ in range(5)])
+    
+    mm.add_player(SimplePlayerRotateShoot())
+    
+    num_players = len([mm.add_player(Player()) for _ in range(5)])
+    
+    mm.add_player(SimplePlayerRotateShoot())
+    mm.add_player(SimplePlayerRotateShoot())
+    mm.add_player(SimplePlayerRotateShoot())
+    mm.add_player(SimplePlayerRotateShoot())
+    
+    num_players = len(mm.players)
     
     pygame.init()
     pygame.font.init()
@@ -158,10 +163,16 @@ def main():
         counter = 0
         render_text(display, "Leaderboard", (10, 120), font)
         leaderboard_sorted = sorted([(k, v) for k, v in mm.leaderboard.items()], key=lambda x: -x[1])
+        max_name_length = max([len(v.get_name()) for v in mm.players.values()])
         for player_id, score in leaderboard_sorted:
-            player_name = mm.players[player_id].get_name()
-            player_color = mm.players[player_id].get_color()
-            render_text(display, f"    {player_name}: {score}", (10, 140 + 20 * counter), font, player_color)
+            player = mm.players[player_id]
+            player_name = player.get_name()
+            player_name +=  " " * (max_name_length - len(player_name))
+            player_score = str(int(score))
+            player_score = " " * (5 - len(player_score)) + player_score
+            player_type = str(type(player))[:-2].split(".")[1]
+            player_color = player.get_color()
+            render_text(display, f"    {player_name}: {player_score}  {player_type}", (10, 140 + 20 * counter), font, player_color)
             counter += 1
         
         pygame.display.flip()
