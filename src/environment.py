@@ -210,16 +210,16 @@ class Environment:
                             closest_intersect_distance = intersect_distance
                             closest_intersect_player_id = other_player.id
             
-            # Use weapon regardless of if it hit a player.
-            if player.can_use_weapon():
-                player.use_weapon()
-            
             # Check if any player was damaged.
             if closest_intersect_type == "player":
                 if player.can_use_weapon():
                     for temp_player in self.players:
                         if temp_player.id == closest_intersect_player_id:
                             temp_player.remove_health(player.bullet_damage)
+            
+            # Use weapon regardless of if it hit a player.
+            if player.can_use_weapon():
+                player.use_weapon()
         
         # Move players.
         for player_id, player_network_output in network_outputs.items():

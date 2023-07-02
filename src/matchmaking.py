@@ -45,6 +45,9 @@ class MatchMaking:
         # Keep track of match number.
         self.match_number = 0
         
+        # Keep track of player distribution.
+        self.player_distribution = {"total": 0, "in_queue": 0, "in_game": 0, "idle": 0}
+        
         # Dictionary containing status reports of the matches from the other process.
         self.status_dict = manager.dict()
         self.status_dict["running"] = True
@@ -205,6 +208,10 @@ class MatchMaking:
                         for index in reversed(indices_to_remove):
                             del self.queue[index]
                         match_created = True
+                        
+                        # Update player distribution.
+                        self.player_distribution["in_game"] += 2
+                        self.player_distribution["in_queue"] -= 2
                     
                     if match_created:
                         break
@@ -239,6 +246,10 @@ class MatchMaking:
         
         # Remove finished matches.
         for index in matches_to_remove:
+            # Update player distribution.
+            self.player_distribution["in_game"] -= len(self.matches[index].players)
+            self.player_distribution["idle"] += len(self.matches[index].players)
+            
             del self.matches[index]
             del self.status_dict[index]
             print(f"Removed match {index}.")
@@ -251,6 +262,10 @@ class MatchMaking:
         # Add player to ranking system
         self.players[player.id]     = player
         self.leaderboard[player.id] = 1000
+        
+        # Update player distribution.
+        self.player_distribution["total"] += 1
+        self.player_distribution["idle"] += 1
         
         print(f"Leaderboard: {self.leaderboard}")
     
@@ -278,6 +293,10 @@ class MatchMaking:
         
         # Add player to queue
         self.queue.append(player_id)
+        
+        # Update player distribution.
+        self.player_distribution["in_queue"] += 1
+        self.player_distribution["idle"] -= 1
         
         print(f"Queue: {self.queue}")
     

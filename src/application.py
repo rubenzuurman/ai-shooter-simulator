@@ -47,7 +47,7 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
 
 def main():
     mm = MatchMaking(ticks_per_second=10)
-    p1 = Player()
+    """p1 = Player()
     p2 = Player()
     p3 = Player()
     p4 = Player()
@@ -55,7 +55,9 @@ def main():
     mm.add_player(p1)
     mm.add_player(p2)
     mm.add_player(p3)
-    mm.add_player(p4)
+    mm.add_player(p4)"""
+    
+    [mm.add_player(Player()) for _ in range(10)]
     
     mm.add_player_to_queue(1)
     mm.add_player_to_queue(2)
@@ -99,6 +101,24 @@ def main():
                 if event.key == pygame.K_3:
                     print("Adding player 3 to queue")
                     mm.add_player_to_queue(3)
+                if event.key == pygame.K_4:
+                    print("Adding player 4 to queue")
+                    mm.add_player_to_queue(4)
+                if event.key == pygame.K_5:
+                    print("Adding player 5 to queue")
+                    mm.add_player_to_queue(5)
+                if event.key == pygame.K_6:
+                    print("Adding player 6 to queue")
+                    mm.add_player_to_queue(6)
+                if event.key == pygame.K_7:
+                    print("Adding player 7 to queue")
+                    mm.add_player_to_queue(7)
+                if event.key == pygame.K_8:
+                    print("Adding player 8 to queue")
+                    mm.add_player_to_queue(8)
+                if event.key == pygame.K_9:
+                    print("Adding player 9 to queue")
+                    mm.add_player_to_queue(9)
                 
                 if event.key == pygame.K_DOWN:
                     fps -= 10
@@ -118,19 +138,23 @@ def main():
         actual_fps = fpscounter.get_fps()
         render_text(display, text=f"fps: {actual_fps} (target: {fps})", position=(10, 10), font=font)
         
-        player_ids = [player.id for player in mm.players.values()]
-        render_text(display, f"Players: {player_ids}", (10, 30), font)
-        render_text(display, f"Queue: {mm.queue}", (10, 50), font)
+        # Render player distribution.
+        total_players = mm.player_distribution["total"]
+        in_queue = mm.player_distribution["in_queue"]
+        in_game = mm.player_distribution["in_game"]
+        idle = mm.player_distribution["idle"]
         
+        render_text(display, f"Total players: {total_players}", (10, 30), font)
+        render_text(display, f"In queue:      {in_queue}", (10, 50), font)
+        render_text(display, f"In game:       {in_game}", (10, 70), font)
+        render_text(display, f"Idle:          {idle}", (10, 90), font)
+        
+        # Render leaderboard.
         counter = 0
-        render_text(display, "Leaderboard", (10, 70), font)
+        render_text(display, "Leaderboard", (10, 120), font)
         for player_id, score in mm.leaderboard.items():
-            render_text(display, f"{player_id}: {score}", (10, 90 + 20 * counter), font)
+            render_text(display, f"    {player_id}: {score}", (10, 140 + 20 * counter), font)
             counter += 1
-        
-        """render_text(display, f"Total players: {len(player_ids)}", (10, 70), font)
-        render_text(display, f"In queue:      {len(mm.queue)}", (10, 90), font)
-        render_text(display, f"In game:       {len(player_ids) - len(mm.queue)}", (10, 110), font)"""
         
         pygame.display.flip()
         clock.tick(fps)
