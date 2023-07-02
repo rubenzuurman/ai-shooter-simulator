@@ -128,11 +128,12 @@ class MatchMaking:
                 # Render rays.
                 start_angle = player_data["rot"] - ((player_data["num_rays"] - 1) / 2) * player_data["ray_sep_angle"]
                 ray_angles = [start_angle + i * player_data["ray_sep_angle"] for i in range(player_data["num_rays"])]
-                for a in ray_angles:
+                ray_intersect_distances = player_data["metadata"]["intersect_distances"]
+                for a, r in zip(ray_angles, ray_intersect_distances):
                     line_start_x = screen_x
                     line_start_y = screen_y
-                    line_end_x = line_start_x + math.cos(a) * (window_w / 2) * ROOT8
-                    line_end_y = line_start_y - math.sin(a) * (window_w / 2) * ROOT8
+                    line_end_x = line_start_x + math.cos(a) * r * (window_w / 2)
+                    line_end_y = line_start_y - math.sin(a) * r * (window_w / 2)
                     
                     pygame.draw.line(display, (0, 255, 255), (line_start_x, line_start_y), (line_end_x, line_end_y))
                     
@@ -157,10 +158,11 @@ class MatchMaking:
                         
                         pygame.draw.line(display, (0, 255, 0), (screen_x0, screen_y0), (screen_x1, screen_y1))"""
                 
+                laser_length = ray_intersect_distances[(len(ray_intersect_distances) - 1) // 2]
                 fadetime = 0.25
                 if time.time() - player_data["last_weapon_activation"] <= fadetime:
                     opacity = max(time.time() - player_data["last_weapon_activation"], 0) / fadetime
-                    pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * window_w / 2, screen_y - math.sin(player_data["rot"]) * window_w / 2), width=5)
+                    pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * laser_length * window_w / 2, screen_y - math.sin(player_data["rot"]) * laser_length * window_w / 2), width=5)
                 
                 # Render position text.
                 render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)

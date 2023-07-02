@@ -123,6 +123,9 @@ class Environment:
                 closest_intersections.append((closest_intersect_distance, \
                     closest_intersect_type))
             
+            # Set player metadata intersect distance of rays.
+            player.metadata["intersect_distances"] = [tup[0] for tup in closest_intersections]
+            
             # Create neural network input array (if seeing nothing: set to 0, 
             # also useful when inside someone else).
             input_array = []
@@ -274,7 +277,7 @@ class Environment:
         
         # Add player positions, rotations, health, and other metadata to result dict.
         for player in self.players:
-            result[player.id] = {"pos": player.position, "rot": player.rotation, "hp": player.health, "num_rays": player.num_rays, "ray_sep_angle": player.ray_sep_angle, "last_weapon_activation": player.last_weapon_activation}
+            result[player.id] = {"pos": player.position, "rot": player.rotation, "hp": player.health, "num_rays": player.num_rays, "ray_sep_angle": player.ray_sep_angle, "last_weapon_activation": player.last_weapon_activation, "metadata": player.get_metadata()}
         
         # Add simulation statistics to result dict and return dict.
         result["ticks_per_second"] = self.ticks_per_second

@@ -28,6 +28,9 @@ class Player:
         
         self.last_weapon_activation = 0
         
+        # Player metadata, used to keep track of intersect distances for now.
+        self.metadata = {"intersect_distances": []}
+        
         # Number of rays and ray separation angle.
         # Make sure number of rays is always odd.
         self.num_rays = num_rays if num_rays % 2 == 1 else num_rays + 1
@@ -49,6 +52,9 @@ class Player:
     
     def remove_health(self, amount):
         self.health -= amount
+    
+    def get_metadata(self):
+        return self.metadata
     
     def randomize_position(self):
         self.position = [rnd.randint(0, 2000) / 1000 - 1, rnd.randint(0, 2000) / 1000 - 1]
