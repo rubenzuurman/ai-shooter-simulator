@@ -1,3 +1,4 @@
+import copy
 import math
 import multiprocessing as mp
 import time
@@ -7,10 +8,10 @@ import pygame
 from environment import Environment, rotate_point
 from player import Player
 
-import sys
-import copy
-
-ROOT8 = math.sqrt(8)
+# Start rating for every player.
+START_RATING = 1000
+# Rating difference when winning 90% of the time against an opponent (in the long run).
+POINT_DIFF_90 = 100
 
 class MatchMaking:
     """
@@ -220,9 +221,9 @@ class MatchMaking:
                 if match_created:
                     break
             
-            if match_created:
+            """if match_created:
                 print(f"Queue: {self.queue}")
-                print(f"Matches: {self.matches}")
+                print(f"Matches: {self.matches}")"""
         
         # Update ranking system if any match has finished.
         matches_to_remove = []
@@ -231,17 +232,22 @@ class MatchMaking:
                 player_ids = [player.id for player in match.players]
                 
                 if self.status_dict[index]["outcome"] == "tie":
-                    print(f"Match {index} between players {tuple(player_ids)} ended in '{self.status_dict[index]['outcome']}'.")
-                    # do nothing
+                    print(f"Match {index} between players {tuple(player_ids)} " \
+                        f"ended in '{self.status_dict[index]['outcome']}'.")
+                    # Do nothing as it's a tie.
                 elif self.status_dict[index]["outcome"] == "no tie":
                     winner_id = self.status_dict[index]["winner_id"]
                     loser_id  = self.status_dict[index]["loser_id"]
                     
-                    print(f"Match {index} between players {tuple(player_ids)} ended in '{self.status_dict[index]['outcome']}' ({winner_id} won).")
+                    print(f"Match {index} between players {tuple(player_ids)} " \
+                        f"ended in '{self.status_dict[index]['outcome']}' " \
+                        f"({winner_id} won).")
                     
-                    # Give points to winner.
-                    self.leaderboard[winner_id] += 50
-                    self.leaderboard[loser_id]  -= 50
+                    # Give points to winner (winner id is first and is thus a).
+                    points = calculate_points_for_a(self.leaderboard[winner_id], \
+                        self.leaderboard[loser_id], POINT_DIFF_90, a_win=True) * 10
+                    self.leaderboard[winner_id] += points
+                    self.leaderboard[loser_id]  -= points
                 
                 # Queue match to be removed.
                 matches_to_remove.append(index)
@@ -263,13 +269,11 @@ class MatchMaking:
         
         # Add player to ranking system
         self.players[player.id]     = player
-        self.leaderboard[player.id] = 1000
+        self.leaderboard[player.id] = START_RATING
         
         # Update player distribution.
         self.player_distribution["total"] += 1
         self.player_distribution["idle"] += 1
-        
-        print(f"Leaderboard: {self.leaderboard}")
     
     def add_player_to_queue(self, player_id):
         # Check if the player exists
@@ -339,3 +343,50 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
     
     # Render text.
     display.blit(text_surface, (position_x, position_y))
+
+def calculate_points_for_a(a, b, p90, a_win):
+    """
+    Function calculating the number of points to player a if player a wins 
+    and is stronger/weaker, and if player a loses and is stronger/weaker.
+    Example 1:
+        If player a has 100 points more than player b, player a is expected 
+        to win 90% of the time. If player a loses, 0.9 points are transfered 
+        to player b, if player a wins, 0.1 points are transfered to player a.
+    Example 2:
+        If player a has 200 points less than player b, player a is expected 
+        to lose 99% of the time. If player a loses, 0.01 points are 
+        transfered to player b, if player a wins, 0.99 points are transfered 
+        to player a.
+    """
+    # Calculate absolute difference.
+    diff = abs(a - b)
+    
+    # Calculate points to transfer for a win when the player is stronger and 
+    # a win when the player is weaker.
+    strong_win_p = 1 / (10 ** (diff / p90))
+    weak_win_p = 1 - strong_win_p
+    
+    # When diff is close to 0, strong_win_p equals 1, but weak_win_p 
+    # equals 0. This prevents players from climbing past opponents with 
+    # similar rating. This solution awards an equal amount of points on a win 
+    # to both players, solving the issue.
+    if diff < 5:
+        strong_win_p = 0.5
+        weak_win_p = 0.5
+    
+    # Transfer points to/from player a depending on if player a won and if 
+    # player a was stronger or weaker than player b.
+    if a > b:
+        if a_win:
+            # Strong win
+            return strong_win_p
+        else:
+            # Strong lose
+            return -weak_win_p
+    else:
+        if a_win:
+            # Weak win
+            return weak_win_p
+        else:
+            # Weak lose
+            return -strong_win_p
