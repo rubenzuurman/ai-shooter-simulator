@@ -1,3 +1,4 @@
+import random as rnd
 import time
 
 import pygame
@@ -92,11 +93,9 @@ def main():
                     running = False
                 
                 if event.key == pygame.K_SPACE:
-                    print("Space pressed")
-                    mm.add_player_to_queue(0)
-                    mm.add_player_to_queue(3)
-                    
-                    for i in range(num_players):
+                    player_ids = list(range(num_players))
+                    rnd.shuffle(player_ids)
+                    for i in player_ids:
                         mm.add_player_to_queue(i)
                 
                 if event.key == pygame.K_0:

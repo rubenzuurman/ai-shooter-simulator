@@ -60,7 +60,7 @@ class MatchMaking:
     
     def render(self, display, font, window_dimensions):
         # Rendering of matches
-        num_matches = len(self.status_dict) - 1
+        num_matches = len([k for k in self.status_dict.keys() if not isinstance(k, str)])
         counter = 1
         match_layout = None
         while match_layout is None:

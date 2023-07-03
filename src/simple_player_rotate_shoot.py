@@ -38,8 +38,12 @@ class SimplePlayerRotateShoot(Player):
         
         # Check if middle ray detects player.
         if center_detected:
-            velocity = 0.40
+            velocity = 0.20
             angular_velocity = 0
+            if left_detected:
+                angular_velocity += -0.20
+            if right_detected:
+                angular_velocity += +0.20
             activate_weapon = float(opponent_sensors[(len(opponent_sensors) - 1) // 2] > 0)
         
         if not left_detected and not right_detected and not center_detected:
