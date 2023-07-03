@@ -58,7 +58,14 @@ class MatchMaking:
         self.match_proc = mp.Process(target=handle_matches, args=(self.matches, self.status_dict))
         self.match_proc.start()
     
-    def render(self, display, font, window_dimensions):
+    def render(self, display, font, window_dimensions, render_options={}):
+        # Construct dictionary of render options.
+        render_options_dict = {}
+        render_options_dict["render_player_position_text"] = render_options["render_player_position_text"] if "render_player_position_text" in render_options.keys() else True
+        for k, v in render_options_dict.items():
+            if not isinstance(v, bool):
+                render_options_dict[k] = False
+        
         # Rendering of matches
         num_matches = len([k for k in self.status_dict.keys() if not isinstance(k, str)])
         counter = 1
@@ -70,7 +77,7 @@ class MatchMaking:
                 match_layout = (counter, counter)
             counter += 1
         
-        render_width = min(window_dimensions[0] * 0.8, window_dimensions[1] * 0.8)
+        render_width = min(window_dimensions[0] * 0.85, window_dimensions[1] * 0.85)
         render_offset = [(window_dimensions[0] - render_width) / 2, 100]
         
         render_index = 0
@@ -134,28 +141,8 @@ class MatchMaking:
                     line_end_y = line_start_y - math.sin(a) * r * (window_w / 2)
                     
                     pygame.draw.line(display, self.players[player_id].get_color(), (line_start_x, line_start_y), (line_end_x, line_end_y))
-                    
-                    alpha = math.atan2(line_end_y - line_start_y, line_end_x - line_start_x)
-                    """l1_start_rot = rotate_point(l1_start, math.pi / 2 - alpha)
-                    l1_end_rot   = rotate_point(l1_end, math.pi / 2 - alpha)
-                    
-                    l2_start_rot = rotate_point(l2_start, math.pi / 2 - alpha)
-                    l2_end_rot   = rotate_point(l2_end, math.pi / 2 - alpha)"""
-                    
-                    """for line in boundaries:
-                        map_pos_flipped0 = [(line[0][0] + 1) / 2, (-line[0][1] + 1) / 2]
-                        map_pos_flipped1 = [(line[1][0] + 1) / 2, (-line[1][1] + 1) / 2]
-                        
-                        map_pos_flipped0_rot = rotate_point(map_pos_flipped0, math.pi / 2 - alpha)
-                        map_pos_flipped1_rot = rotate_point(map_pos_flipped1, math.pi / 2 - alpha)
-                        
-                        screen_x0 = window_x + map_pos_flipped0_rot[0] * window_w
-                        screen_y0 = window_y + map_pos_flipped0_rot[1] * window_h
-                        screen_x1 = window_x + map_pos_flipped1_rot[0] * window_w
-                        screen_y1 = window_y + map_pos_flipped1_rot[1] * window_h
-                        
-                        pygame.draw.line(display, (0, 255, 0), (screen_x0, screen_y0), (screen_x1, screen_y1))"""
                 
+                # Render laser if the weapon has been activated.
                 laser_length = ray_intersect_distances[(len(ray_intersect_distances) - 1) // 2]
                 fadetime = 0.25
                 if time.time() - player_data["last_weapon_activation"] <= fadetime:
@@ -164,7 +151,8 @@ class MatchMaking:
                     pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * laser_length * window_w / 2, screen_y - math.sin(player_data["rot"]) * laser_length * window_w / 2), width=5)
                 
                 # Render position text.
-                render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
+                if render_options_dict["render_player_position_text"]:
+                    render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
             
             # Render match number and participants.
             player_ids = [k for k in status.keys() if isinstance(k, int)]
@@ -182,6 +170,14 @@ class MatchMaking:
             if render_match_text:
                 render_text(display, f"Match {key}: {self.players[player_ids[0]].get_name()} vs {self.players[player_ids[1]].get_name()}", (window_x + 5, window_y + 5), current_font)
             
+            # Render timer on the right of the match window.
+            timer_width  = int(window_w * 0.03)
+            timer_height = int(window_h * (1 - status["timer_percent"]))
+            timer_x = window_x + window_w - timer_width
+            timer_y = window_y + window_h - timer_height
+            pygame.draw.rect(display, (100, 100, 255), (timer_x, timer_y, timer_width, timer_height))
+            
+            # Increment render index for layout calculations.
             render_index += 1
     
     def calculate_render_window_properties(self, offset, available_width, number_of_columns, render_index):
@@ -201,7 +197,7 @@ class MatchMaking:
     
     def update(self):
         ## Handling of queue, creating new matches, and updating of ranking system
-        # Check if any two players are no more than 400 ranking points apart.
+        # Check if any two players are no more than 100 ranking points apart.
         match_created = True
         while len(self.queue) > 1 and match_created:
             match_created = False
@@ -212,7 +208,7 @@ class MatchMaking:
                     
                     p1_ranking = self.leaderboard[p1]
                     p2_ranking = self.leaderboard[p2]
-                    if abs(p1_ranking - p2_ranking) <= 400:
+                    if abs(p1_ranking - p2_ranking) <= 100:
                         env = Environment(player_size=self.player_size, ticks_per_second=self.ticks_per_second)
                         env.add_player(copy.deepcopy(self.players[p1]))
                         env.add_player(copy.deepcopy(self.players[p2]))

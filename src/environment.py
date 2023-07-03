@@ -259,6 +259,22 @@ class Environment:
             if new_y > +1 - self.player_size / 2:
                 new_y = +1 - self.player_size / 2
             
+            # Check for collisions with other players.
+            for other_player in self.players:
+                if player_id == other_player.id:
+                    continue
+                
+                pr = self.player_size / 2
+                
+                ox = other_player.position[0]
+                oy = other_player.position[1]
+                dx = new_x - ox
+                dy = new_y - oy
+                dr = math.sqrt(dx * dx + dy * dy)
+                if dr < 2 * pr:
+                    new__x = ox + 2 * pr * (dx / dr)
+                    new_y = oy + 2 * pr * (dy / dr)
+            
             # Update player positions and rotations.
             player.position = [new_x, new_y]
             player.rotation += angular_velocity * delta_time
@@ -296,6 +312,7 @@ class Environment:
         result["ticks_per_second"] = self.ticks_per_second
         result["current_tick"] = self.current_tick
         result["current_time"] = self.current_tick / self.ticks_per_second
+        result["timer_percent"] = self.current_tick / (MAX_MATCH_DURATION * self.ticks_per_second)
         return result
 
 def rotate_point(point, alpha):

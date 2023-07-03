@@ -49,6 +49,17 @@ def render_text_center(display, text, position, font, color=(255, 255, 255)):
     # Render text.
     display.blit(text_surface, (position_x, position_y))
 
+def render_text_right(display, text, position, font, color=(255, 255, 255)):
+    # Create text surface.
+    text_surface = font.render(text, False, color)
+    
+    # Update position to render text right.
+    position_x = position[0] - text_surface.get_width()
+    position_y = position[1]
+    
+    # Render text.
+    display.blit(text_surface, (position_x, position_y))
+
 def main():
     mm = MatchMaking(ticks_per_second=TICKS_PER_SECOND)
     
@@ -79,6 +90,7 @@ def main():
     display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
     
     # Start render loop.
+    render_options = {"render_player_position_text": True}
     fps = 60
     clock = pygame.time.Clock()
     fpscounter = FPSCounter()
@@ -91,6 +103,9 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                
+                if event.key == pygame.K_p:
+                    render_options["render_player_position_text"] = not render_options["render_player_position_text"]
                 
                 if event.key == pygame.K_SPACE:
                     player_ids = list(range(num_players))
@@ -141,7 +156,7 @@ def main():
         display.fill((0, 0, 0))
         
         mm.update()
-        mm.render(display, font, window_dimensions)
+        mm.render(display, font, window_dimensions, render_options=render_options)
         
         fpscounter.tick()
         actual_fps = fpscounter.get_fps()
@@ -173,6 +188,14 @@ def main():
             player_color = player.get_color()
             render_text(display, f"    {player_name}: {player_score}  {player_type}", (10, 140 + 20 * counter), font, player_color)
             counter += 1
+        
+        # Render text "Press space to add all players to the queue".
+        render_text_center(display, "Press space to add all players to the queue", (window_dimensions[0] / 2, 15), font)
+        
+        # Render rendering options to the right of the screen.
+        render_text_right(display, "Render options", (window_dimensions[0] - 10, 10), font)
+        render_player_positions = " True" if render_options["render_player_position_text"] else "False"
+        render_text_right(display, f"Render player positions (P): {render_player_positions}", (window_dimensions[0] - 10, 30), font)
         
         pygame.display.flip()
         clock.tick(fps)
