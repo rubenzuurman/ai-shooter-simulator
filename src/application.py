@@ -63,21 +63,9 @@ def render_text_right(display, text, position, font, color=(255, 255, 255)):
 def main():
     mm = MatchMaking(ticks_per_second=TICKS_PER_SECOND)
     
-    num_players = len([mm.add_player(Player()) for _ in range(5)])
-    
-    mm.add_player(SimplePlayerRotateShoot())
-    mm.add_player(SimplePlayerRotateShoot())
-    
-    num_players = len([mm.add_player(Player()) for _ in range(5)])
-    
-    mm.add_player(SimplePlayerRotateShoot())
-    
-    num_players = len([mm.add_player(Player()) for _ in range(5)])
-    
-    mm.add_player(SimplePlayerRotateShoot())
-    mm.add_player(SimplePlayerRotateShoot())
-    mm.add_player(SimplePlayerRotateShoot())
-    mm.add_player(SimplePlayerRotateShoot())
+    for _ in range(25):
+        mm.add_player(Player())
+        mm.add_player(SimplePlayerRotateShoot())
     
     num_players = len(mm.players)
     
@@ -87,10 +75,11 @@ def main():
     
     # Create window.
     window_dimensions = (1920, 1080)
-    display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
+    display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE | pygame.DOUBLEBUF)
     
     # Start render loop.
-    render_options = {"render_player_position_text": True}
+    update_options = {"auto_queue_idle_players": False}
+    render_options = {"player_position_text": True, "match_text": True, "match_timer": True, "healthbars": True}
     fps = 60
     clock = pygame.time.Clock()
     fpscounter = FPSCounter()
@@ -104,8 +93,19 @@ def main():
                 if event.key == pygame.K_ESCAPE:
                     running = False
                 
+                # Adjust update options.
+                if event.key == pygame.K_q:
+                    update_options["auto_queue_idle_players"] = not update_options["auto_queue_idle_players"]
+                
+                # Adjust render options.
                 if event.key == pygame.K_p:
-                    render_options["render_player_position_text"] = not render_options["render_player_position_text"]
+                    render_options["player_position_text"] = not render_options["player_position_text"]
+                if event.key == pygame.K_m:
+                    render_options["match_text"] = not render_options["match_text"]
+                if event.key == pygame.K_t:
+                    render_options["match_timer"] = not render_options["match_timer"]
+                if event.key == pygame.K_h:
+                    render_options["healthbars"] = not render_options["healthbars"]
                 
                 if event.key == pygame.K_SPACE:
                     player_ids = list(range(num_players))
@@ -151,11 +151,10 @@ def main():
             
             if event.type == pygame.VIDEORESIZE:
                 window_dimensions = (event.w, event.h)
-                display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE)
         
         display.fill((0, 0, 0))
         
-        mm.update()
+        mm.update(update_options=update_options)
         mm.render(display, font, window_dimensions, render_options=render_options)
         
         fpscounter.tick()
@@ -193,9 +192,29 @@ def main():
         render_text_center(display, "Press space to add all players to the queue", (window_dimensions[0] / 2, 15), font)
         
         # Render rendering options to the right of the screen.
-        render_text_right(display, "Render options", (window_dimensions[0] - 10, 10), font)
-        render_player_positions = " True" if render_options["render_player_position_text"] else "False"
-        render_text_right(display, f"Render player positions (P): {render_player_positions}", (window_dimensions[0] - 10, 30), font)
+        lines_right_of_screen = []
+        lines_right_of_screen.append("Render options")
+        
+        render_player_positions = " True" if render_options["player_position_text"] else "False"
+        lines_right_of_screen.append(f"Render player positions (P): {render_player_positions}")
+        
+        render_match_text = " True" if render_options["match_text"] else "False"
+        lines_right_of_screen.append(f"Render match text (M): {render_match_text}")
+        
+        render_match_timer = " True" if render_options["match_timer"] else "False"
+        lines_right_of_screen.append(f"Render match timer (T): {render_match_timer}")
+        
+        render_healthbars = " True" if render_options["healthbars"] else "False"
+        lines_right_of_screen.append(f"Render healthbars (H): {render_healthbars}")
+        
+        lines_right_of_screen.append("")
+        lines_right_of_screen.append("Update options")
+        
+        auto_queue_idle_players_text = " True" if update_options["auto_queue_idle_players"] else "False"
+        lines_right_of_screen.append(f"Auto-queue idle players: {auto_queue_idle_players_text}")
+        
+        for index, line in enumerate(lines_right_of_screen):
+            render_text_right(display, line, (window_dimensions[0] - 10, 10 + 20 * index), font)
         
         pygame.display.flip()
         clock.tick(fps)

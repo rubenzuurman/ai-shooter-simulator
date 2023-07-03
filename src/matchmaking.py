@@ -28,7 +28,7 @@ class MatchMaking:
     """
     
     def __init__(self, player_size=0.2, ticks_per_second=50):
-        manager = mp.Manager()
+        self.manager = mp.Manager()
         
         # Player objects.
         self.players = {}
@@ -37,7 +37,7 @@ class MatchMaking:
         # Player ids in queue.
         self.queue = []
         # Environments containing matches (list of environments).
-        self.matches = manager.dict()
+        self.matches = self.manager.dict()
         
         # Player size (the environment size is 2.0) and ticks per second.
         self.player_size = player_size
@@ -50,7 +50,7 @@ class MatchMaking:
         self.player_distribution = {"total": 0, "in_queue": 0, "in_game": 0, "idle": 0}
         
         # Dictionary containing status reports of the matches from the other process.
-        self.status_dict = manager.dict()
+        self.status_dict = self.manager.dict()
         self.status_dict["running"] = True
         self.status_dict["ticks_per_second"] = ticks_per_second
         
@@ -59,12 +59,19 @@ class MatchMaking:
         self.match_proc.start()
     
     def render(self, display, font, window_dimensions, render_options={}):
-        # Construct dictionary of render options.
-        render_options_dict = {}
-        render_options_dict["render_player_position_text"] = render_options["render_player_position_text"] if "render_player_position_text" in render_options.keys() else True
-        for k, v in render_options_dict.items():
+        ## Fix up render options if necessary.
+        # Replace non-bool values with False.
+        for k, v in render_options.items():
             if not isinstance(v, bool):
-                render_options_dict[k] = False
+                render_options[k] = False
+        
+        # Add required keys with default values if they were not present in 
+        # the render options.
+        required_keys = {"player_position_text": True, "match_text": True, \
+            "match_timer": True, "healthbars": True}
+        for key, default_value in required_keys.items():
+            if not (key in render_options.keys()):
+                render_options[key] = default_value
         
         # Rendering of matches
         num_matches = len([k for k in self.status_dict.keys() if not isinstance(k, str)])
@@ -124,11 +131,12 @@ class MatchMaking:
                 pygame.draw.circle(display, self.players[player_id].get_color(), (screen_x, screen_y), window_w / 2 * self.player_size / 2, width=2)
                 
                 # Render healthbar.
-                healthbar_green_width = (player_data["hp"] / 100) * 50
-                healthbar_start = screen_x - 25
-                healthbar_start_mid = screen_x - 25 + healthbar_green_width
-                pygame.draw.rect(display, (10, 150, 10), (healthbar_start, screen_y - 25, healthbar_green_width, 10))
-                pygame.draw.rect(display, (150, 10, 10), (healthbar_start_mid, screen_y - 25, 50 - healthbar_green_width, 10))
+                if render_options["healthbars"]:
+                    healthbar_green_width = (player_data["hp"] / 100) * 50
+                    healthbar_start = screen_x - 25
+                    healthbar_start_mid = screen_x - 25 + healthbar_green_width
+                    pygame.draw.rect(display, (10, 150, 10), (healthbar_start, screen_y - 25, healthbar_green_width, 10))
+                    pygame.draw.rect(display, (150, 10, 10), (healthbar_start_mid, screen_y - 25, 50 - healthbar_green_width, 10))
                 
                 # Render rays.
                 start_angle = player_data["rot"] - ((player_data["num_rays"] - 1) / 2) * player_data["ray_sep_angle"]
@@ -151,31 +159,33 @@ class MatchMaking:
                     pygame.draw.line(display, (0, int(255 * opacity), 0), (screen_x, screen_y), (screen_x + math.cos(player_data["rot"]) * laser_length * window_w / 2, screen_y - math.sin(player_data["rot"]) * laser_length * window_w / 2), width=5)
                 
                 # Render position text.
-                if render_options_dict["render_player_position_text"]:
+                if render_options["player_position_text"]:
                     render_text_center(display, f"id:{player_id} {map_position[0]:.2f}, {map_position[1]:.2f}", (screen_x, screen_y - 30), font)
             
             # Render match number and participants.
-            player_ids = [k for k in status.keys() if isinstance(k, int)]
-            render_match_text = True
-            if window_w > 350:
-                current_font = pygame.font.SysFont("Courier New", 16)
-            elif window_w > 250:
-                current_font = pygame.font.SysFont("Courier New", 14)
-            elif window_w > 200:
-                current_font = pygame.font.SysFont("Courier New", 12)
-            elif window_w > 160:
-                current_font = pygame.font.SysFont("Courier New", 8)
-            else:
-                render_match_text = False
-            if render_match_text:
-                render_text(display, f"Match {key}: {self.players[player_ids[0]].get_name()} vs {self.players[player_ids[1]].get_name()}", (window_x + 5, window_y + 5), current_font)
+            if render_options["match_text"]:
+                player_ids = [k for k in status.keys() if isinstance(k, int)]
+                render_match_text = True
+                if window_w > 350:
+                    current_font = pygame.font.SysFont("Courier New", 16)
+                elif window_w > 250:
+                    current_font = pygame.font.SysFont("Courier New", 14)
+                elif window_w > 200:
+                    current_font = pygame.font.SysFont("Courier New", 12)
+                elif window_w > 160:
+                    current_font = pygame.font.SysFont("Courier New", 8)
+                else:
+                    render_match_text = False
+                if render_match_text:
+                    render_text(display, f"Match {key}: {self.players[player_ids[0]].get_name()} vs {self.players[player_ids[1]].get_name()}", (window_x + 5, window_y + 5), current_font)
             
             # Render timer on the right of the match window.
-            timer_width  = int(window_w * 0.03)
-            timer_height = int(window_h * (1 - status["timer_percent"]))
-            timer_x = window_x + window_w - timer_width
-            timer_y = window_y + window_h - timer_height
-            pygame.draw.rect(display, (100, 100, 255), (timer_x, timer_y, timer_width, timer_height))
+            if render_options["match_timer"]:
+                timer_width  = int(window_w * 0.03)
+                timer_height = int(window_h * (1 - status["timer_percent"]))
+                timer_x = window_x + window_w - timer_width
+                timer_y = window_y + window_h - timer_height
+                pygame.draw.rect(display, (100, 100, 255), (timer_x, timer_y, timer_width, timer_height))
             
             # Increment render index for layout calculations.
             render_index += 1
@@ -195,7 +205,20 @@ class MatchMaking:
         
         return [offset[0] + render_x, offset[1] + render_y, render_width, render_width]
     
-    def update(self):
+    def update(self, update_options={}):
+        ## Fix up update options if necessary.
+        # Replace invalid values with False.
+        for k, v in update_options.items():
+            if not isinstance(v, bool):
+                update_options[k] = False
+        
+        # Add required keys with default values if they were not present in 
+        # the update options.
+        required_keys = {"auto_queue_idle_players": False}
+        for key, default_value in required_keys.items():
+            if not (key in update_options.keys()):
+                update_options[key] = default_value
+        
         ## Handling of queue, creating new matches, and updating of ranking system
         # Check if any two players are no more than 100 ranking points apart.
         match_created = True
@@ -230,10 +253,6 @@ class MatchMaking:
                         break
                 if match_created:
                     break
-            
-            """if match_created:
-                print(f"Queue: {self.queue}")
-                print(f"Matches: {self.matches}")"""
         
         # Update ranking system if any match has finished.
         matches_to_remove = []
@@ -268,9 +287,31 @@ class MatchMaking:
             self.player_distribution["in_game"] -= len(self.matches[index].players)
             self.player_distribution["idle"] += len(self.matches[index].players)
             
+            # Remove match.
             del self.matches[index]
             del self.status_dict[index]
             print(f"Removed match {index}.")
+        
+        # Auto-queue idle players if this setting is enabled.
+        if update_options["auto_queue_idle_players"]:
+            # Get list of all player ids.
+            all_players = list(self.players.keys())
+            
+            # Get list of players who are in queue.
+            in_queue = self.queue
+            
+            # Get list of players who are in game.
+            in_game = []
+            for match in self.matches.values():
+                in_game.extend([player.id for player in match.players])
+            
+            # Queue players who are not in queue nor in game.
+            for player_id in all_players:
+                if player_id in in_queue:
+                    continue
+                if player_id in in_game:
+                    continue
+                self.add_player_to_queue(player_id)
     
     def add_player(self, player):
         if not isinstance(player, Player):
@@ -319,6 +360,8 @@ class MatchMaking:
     def quit(self):
         self.status_dict["running"] = False
         self.match_proc.join()
+        self.manager.shutdown()
+        self.manager.join()
 
 def handle_matches(matches_dict, status_dict):
     clock = pygame.time.Clock()
@@ -329,7 +372,8 @@ def handle_matches(matches_dict, status_dict):
             result = match.step()
             
             # Update static dict.
-            status_dict[index] = result
+            if not (result is None):
+                status_dict[index] = result
             
             # Replace match in matches dict to write changes made by the step() function.
             matches_dict[index] = match

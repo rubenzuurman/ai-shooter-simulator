@@ -20,3 +20,6 @@ I implemented intersections between lines and intersections between lines and ci
 02-07-2023
 Random names source: https://www.rong-chang.com/namesdict/popular_names.htm
 Random colors source: https://www.rapidtables.com/web/color/RGB_Color.html
+
+03-07-2023
+Today I fixed a major bug, if the window was being resized when a match ended, when the resizing was done the value of the status_dict\[match_index\] would be None, and the for loop finalizing the match in mm.update\(\) would crash. This happened because the Environment.update\(\) function returns None when the match is finished, and the handle_matches\(\) function (which runs on a separate) just copied this None into the status dict. Now the function first checks if the return value is not None, and only if it's not it replaces the entry in the status_dict dictionary.
