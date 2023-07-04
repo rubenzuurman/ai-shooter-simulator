@@ -25,6 +25,7 @@ class Environment:
         self.current_tick = 0
         
         self.finished = False
+        self.outcome_processed = False
     
     def add_player(self, player):
         # Randomize position and rotation.

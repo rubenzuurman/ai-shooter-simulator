@@ -46,6 +46,9 @@ class MatchMaking:
         # Keep track of match number.
         self.match_number = 0
         
+        # Keep track of render indices of matches (keys are the match numbers, values are the render indices).
+        self.render_indices = {}
+        
         # Keep track of player distribution.
         self.player_distribution = {"total": 0, "in_queue": 0, "in_game": 0, "idle": 0}
         
@@ -53,6 +56,9 @@ class MatchMaking:
         self.status_dict = self.manager.dict()
         self.status_dict["running"] = True
         self.status_dict["ticks_per_second"] = ticks_per_second
+        
+        # List used to track the status dict entry removed bug matches.
+        self.its_happening = []
         
         # Start process handling matches.
         self.match_proc = mp.Process(target=handle_matches, args=(self.matches, self.status_dict))
@@ -73,24 +79,29 @@ class MatchMaking:
             if not (key in render_options.keys()):
                 render_options[key] = default_value
         
+        # Get maximum render index from render indices.
+        max_render_index = 0 if len(self.render_indices) == 0 else max([v for v in self.render_indices.values()]) + 1
+        
         # Rendering of matches
         num_matches = len([k for k in self.status_dict.keys() if not isinstance(k, str)])
         counter = 1
         match_layout = None
         while match_layout is None:
-            if counter * (counter - 1) >= num_matches:
+            if counter * (counter - 1) >= max(max_render_index, num_matches):
                 match_layout = (counter, counter - 1)
-            elif counter * counter >= num_matches:
+            elif counter * counter >= max(max_render_index, num_matches):
                 match_layout = (counter, counter)
             counter += 1
         
         render_width = min(window_dimensions[0] * 0.85, window_dimensions[1] * 0.85)
         render_offset = [(window_dimensions[0] - render_width) / 2, 100]
         
-        render_index = 0
         for key, status in self.status_dict.items():
             if key == "running" or key == "ticks_per_second":
                 continue
+            
+            # Get render index from render indices dict.
+            render_index = self.render_indices[key]
             
             boundaries = [
                 [(1, -1), (1, 1)],   # right
@@ -186,9 +197,6 @@ class MatchMaking:
                 timer_x = window_x + window_w - timer_width
                 timer_y = window_y + window_h - timer_height
                 pygame.draw.rect(display, (100, 100, 255), (timer_x, timer_y, timer_width, timer_height))
-            
-            # Increment render index for layout calculations.
-            render_index += 1
     
     def calculate_render_window_properties(self, offset, available_width, number_of_columns, render_index):
         # Assuming 5% spacing between windows.
@@ -232,11 +240,30 @@ class MatchMaking:
                     p1_ranking = self.leaderboard[p1]
                     p2_ranking = self.leaderboard[p2]
                     if abs(p1_ranking - p2_ranking) <= 100:
+                        # Create environment and add to matches dict.
                         env = Environment(player_size=self.player_size, ticks_per_second=self.ticks_per_second)
                         env.add_player(copy.deepcopy(self.players[p1]))
                         env.add_player(copy.deepcopy(self.players[p2]))
                         self.matches[self.match_number] = env
+                        
+                        # Add render index.
+                        # Sort render indices.
+                        render_indices = dict(sorted(self.render_indices.items(), key=lambda x: x[1]))
+                        # Check if the zeroth index is free.
+                        if not (0 in render_indices.values()):
+                            self.render_indices[self.match_number] = 0
+                        # Check all subsequent indices.
+                        else:
+                            for match_index, render_index in render_indices.items():
+                                # Check if the next render index is present.
+                                if not (render_index + 1 in render_indices.values()):
+                                    self.render_indices[self.match_number] = render_index + 1
+                                    break
+                        
+                        # Increment match number.
                         self.match_number += 1
+                        
+                        # Remove players from queue.
                         indices_to_remove = []
                         for index, q in enumerate(self.queue):
                             if q == p1 or q == p2:
@@ -258,7 +285,23 @@ class MatchMaking:
         matches_to_remove = []
         for index, match in self.matches.items():
             if match.is_finished():
+                # Check if the outcome has already been processed.
+                if match.outcome_processed:
+                    print("[BUG] This is a rare bug where the status dict " \
+                        "entry gets removed, but the match entry doesn't. " \
+                        "The match is already finished and the outcome has " \
+                        "been handled. Attempting to remove the match entry again...")
+                    matches_to_remove.append(index)
+                    continue
+                
+                # Get ids of all players in the match.
                 player_ids = [player.id for player in match.players]
+                
+                if not (index in self.status_dict.keys()):
+                    print(f"Unfortunately, {index} is in matches, but not in status dict (finished: {match.finished}, outcome processed: {match.outcome_processed}).")
+                    self.its_happening.append(index)
+                    self.its_happening = list(set(self.its_happening))
+                    continue
                 
                 if self.status_dict[index]["outcome"] == "tie":
                     print(f"Match {index} between players {tuple(player_ids)} " \
@@ -278,8 +321,14 @@ class MatchMaking:
                     self.leaderboard[winner_id] += points
                     self.leaderboard[loser_id]  -= points
                 
+                # Set outcome processed to true for the random occasional bug where the status dict gets removed, but the match doesn't.
+                self.matches[index].outcome_processed = True
+                print(f"outcome processed for number {index}", self.matches[index].outcome_processed)
+                
                 # Queue match to be removed.
                 matches_to_remove.append(index)
+                
+                print(f"Finished match number {index}.")
         
         # Remove finished matches.
         for index in matches_to_remove:
@@ -288,9 +337,20 @@ class MatchMaking:
             self.player_distribution["idle"] += len(self.matches[index].players)
             
             # Remove match.
-            del self.matches[index]
-            del self.status_dict[index]
-            print(f"Removed match {index}.")
+            if index in self.matches.keys():
+                del self.matches[index]
+            if not (index in self.matches.keys()):
+                print(f"Removed match number {index}.")
+            
+            if index in self.status_dict.keys():
+                del self.status_dict[index]
+            if not (index in self.status_dict.keys()):
+                print(f"Removed status dict number {index}.")
+            
+            if index in self.render_indices.keys():
+                del self.render_indices[index]
+            if not (index in self.render_indices.keys()):
+                print(f"Removed render index number {index}.")
         
         # Auto-queue idle players if this setting is enabled.
         if update_options["auto_queue_idle_players"]:
