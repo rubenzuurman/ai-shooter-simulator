@@ -1,5 +1,5 @@
+import logging
 import math
-
 import sys
 
 from simple_player_rotate_shoot import SimplePlayerRotateShoot
@@ -25,7 +25,6 @@ class Environment:
         self.current_tick = 0
         
         self.finished = False
-        self.outcome_processed = False
     
     def add_player(self, player):
         # Randomize position and rotation.
@@ -152,7 +151,7 @@ class Environment:
                         input_array.extend([0, 0, intersection[0] / ROOT8])
                     else:
                         # Should not be reached.
-                        print(f"[ERROR] This state should not be reached: intersection_target={intersection[1]}")
+                        logging.error(f"Intersection target is {intersection[1]}, this state should not be reached.")
                         input_array.extend([0, 0, 0])
             
             # Get velocity and angular velocity from players by calling the 

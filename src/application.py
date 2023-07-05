@@ -1,4 +1,6 @@
+import logging
 import random as rnd
+import sys
 import time
 
 import pygame
@@ -61,6 +63,21 @@ def render_text_right(display, text, position, font, color=(255, 255, 255)):
     display.blit(text_surface, (position_x, position_y))
 
 def main():
+    # Initialize logger for file output.
+    #fmt_str = "%(asctime)s [%(levelname)-8.8s] %(message)s"
+    fmt_str = "%(asctime)s %(levelname)s %(message)s"
+    datefmt_str = "%Y-%m-%d %H:%M:%S"
+    logging.basicConfig(level=logging.DEBUG, format=fmt_str, datefmt=datefmt_str, filename="log.txt", filemode="w")
+    
+    # Add handler for stdout output.
+    consolehandler = logging.StreamHandler(sys.stdout)
+    consoleformatter = logging.Formatter(fmt="%(levelname)s %(message)s")
+    consolehandler.setFormatter(consoleformatter)
+    consolehandler.setLevel(logging.WARNING)
+    
+    logger = logging.getLogger()
+    logger.addHandler(consolehandler)
+    
     mm = MatchMaking(ticks_per_second=TICKS_PER_SECOND)
     
     for _ in range(25):
@@ -68,6 +85,8 @@ def main():
         mm.add_player(SimplePlayerRotateShoot())
     
     num_players = len(mm.players)
+    
+    logging.debug("Matchmaking created.")
     
     pygame.init()
     pygame.font.init()
@@ -77,6 +96,8 @@ def main():
     window_dimensions = (1920, 1080)
     display = pygame.display.set_mode(window_dimensions, pygame.RESIZABLE | pygame.DOUBLEBUF)
     
+    logging.debug("Pygame window created.")
+    
     # Start render loop.
     update_options = {"auto_queue_idle_players": False}
     render_options = {"player_position_text": True, "match_text": True, "match_timer": True, "healthbars": True}
@@ -84,6 +105,7 @@ def main():
     clock = pygame.time.Clock()
     fpscounter = FPSCounter()
     running = True
+    logging.debug("Starting render loop.")
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -96,6 +118,8 @@ def main():
                 # Adjust update options.
                 if event.key == pygame.K_q:
                     update_options["auto_queue_idle_players"] = not update_options["auto_queue_idle_players"]
+                    current_setting = "on" if update_options["auto_queue_idle_players"] else "off"
+                    logging.debug(f"Switched auto-queue idle players to {current_setting}.")
                 
                 # Adjust render options.
                 if event.key == pygame.K_p:
@@ -213,10 +237,6 @@ def main():
         auto_queue_idle_players_text = " True" if update_options["auto_queue_idle_players"] else "False"
         lines_right_of_screen.append(f"Auto-queue idle players: {auto_queue_idle_players_text}")
         
-        lines_right_of_screen.append("")
-        if len(mm.its_happening) > 0:
-            lines_right_of_screen.append(f"Its happening: {mm.its_happening}")
-        
         for index, line in enumerate(lines_right_of_screen):
             render_text_right(display, line, (window_dimensions[0] - 10, 10 + 20 * index), font)
         
@@ -225,6 +245,8 @@ def main():
     
     pygame.quit()
     mm.quit()
+    
+    logging.debug("Quit pygame and matchmaking.")
 
 if __name__ == "__main__":
     main()

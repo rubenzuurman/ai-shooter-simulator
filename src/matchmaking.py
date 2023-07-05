@@ -1,4 +1,5 @@
 import copy
+import logging
 import math
 import multiprocessing as mp
 import time
@@ -56,9 +57,6 @@ class MatchMaking:
         self.status_dict = self.manager.dict()
         self.status_dict["running"] = True
         self.status_dict["ticks_per_second"] = ticks_per_second
-        
-        # List used to track the status dict entry removed bug matches.
-        self.its_happening = []
         
         # Start process handling matches.
         self.match_proc = mp.Process(target=handle_matches, args=(self.matches, self.status_dict))
@@ -260,6 +258,11 @@ class MatchMaking:
                                     self.render_indices[self.match_number] = render_index + 1
                                     break
                         
+                        # Log match creation.
+                        players_str = "".join([f"{p.id}, " for p in self.matches[self.match_number].players[:-1]])[:-2] + " "
+                        players_str += f"and {self.matches[self.match_number].players[-1].id}"
+                        logging.info(f"Created match number {self.match_number} containing players {players_str}.")
+                        
                         # Increment match number.
                         self.match_number += 1
                         
@@ -285,50 +288,36 @@ class MatchMaking:
         matches_to_remove = []
         for index, match in self.matches.items():
             if match.is_finished():
-                # Check if the outcome has already been processed.
-                if match.outcome_processed:
-                    print("[BUG] This is a rare bug where the status dict " \
-                        "entry gets removed, but the match entry doesn't. " \
-                        "The match is already finished and the outcome has " \
-                        "been handled. Attempting to remove the match entry again...")
-                    matches_to_remove.append(index)
-                    continue
-                
                 # Get ids of all players in the match.
                 player_ids = [player.id for player in match.players]
                 
                 if not (index in self.status_dict.keys()):
-                    print(f"Unfortunately, {index} is in matches, but not in status dict (finished: {match.finished}, outcome processed: {match.outcome_processed}).")
-                    self.its_happening.append(index)
-                    self.its_happening = list(set(self.its_happening))
+                    logging.warning(f"Match number {index} is present in " \
+                        "matches, but not in status dict.")
                     continue
                 
                 if self.status_dict[index]["outcome"] == "tie":
-                    print(f"Match {index} between players {tuple(player_ids)} " \
-                        f"ended in '{self.status_dict[index]['outcome']}'.")
                     # Do nothing as it's a tie.
+                    logging.info(f"Processed outcome of match number {index}: tie.")
                 elif self.status_dict[index]["outcome"] == "no tie":
+                    # Get winner id and loser id.
                     winner_id = self.status_dict[index]["winner_id"]
                     loser_id  = self.status_dict[index]["loser_id"]
-                    
-                    print(f"Match {index} between players {tuple(player_ids)} " \
-                        f"ended in '{self.status_dict[index]['outcome']}' " \
-                        f"({winner_id} won).")
                     
                     # Give points to winner (winner id is first and is thus a).
                     points = calculate_points_for_a(self.leaderboard[winner_id], \
                         self.leaderboard[loser_id], POINT_DIFF_90, a_win=True) * 10
                     self.leaderboard[winner_id] += points
                     self.leaderboard[loser_id]  -= points
-                
-                # Set outcome processed to true for the random occasional bug where the status dict gets removed, but the match doesn't.
-                self.matches[index].outcome_processed = True
-                print(f"outcome processed for number {index}", self.matches[index].outcome_processed)
+                    
+                    logging.info(f"Processed outcome of match number {index}: no tie ({winner_id} won).")
+                else:
+                    logging.error(f"Invalid outcome for match number {index}: {self.status_dict[index]['outcome']}. This state should not be reached.")
                 
                 # Queue match to be removed.
                 matches_to_remove.append(index)
                 
-                print(f"Finished match number {index}.")
+                logging.debug(f"Finished handling match number {index}.")
         
         # Remove finished matches.
         for index in matches_to_remove:
@@ -339,18 +328,17 @@ class MatchMaking:
             # Remove match.
             if index in self.matches.keys():
                 del self.matches[index]
-            if not (index in self.matches.keys()):
-                print(f"Removed match number {index}.")
-            
             if index in self.status_dict.keys():
                 del self.status_dict[index]
-            if not (index in self.status_dict.keys()):
-                print(f"Removed status dict number {index}.")
-            
             if index in self.render_indices.keys():
                 del self.render_indices[index]
-            if not (index in self.render_indices.keys()):
-                print(f"Removed render index number {index}.")
+            
+            if not (index in self.matches.keys()) \
+                and not (index in self.status_dict.keys()) \
+                and not (index in self.render_indices.keys()):
+                logging.info(f"Removed match number {index} from all dictionaries.")
+            else:
+                logging.warning(f"Failed to remove match number {index} from all dictionaries.")
         
         # Auto-queue idle players if this setting is enabled.
         if update_options["auto_queue_idle_players"]:
@@ -375,7 +363,7 @@ class MatchMaking:
     
     def add_player(self, player):
         if not isinstance(player, Player):
-            print(f"Player must be an instance of Player, not '{type(player)}'.")
+            logging.warning(f"Player must be an instance of Player, not '{type(player)}'.")
             return
         
         # Add player to ranking system
@@ -394,18 +382,18 @@ class MatchMaking:
                 player_exists = True
                 break
         if not player_exists:
-            print(f"Player with id '{player_id}' does not exist.")
+            logger.warning(f"Player with id '{player_id}' does not exist.")
             return
         
         # Check if the player is not already in the queue
         if player_id in self.queue:
-            print(f"Player with id '{player_id}' is already in the queue.")
+            logger.info(f"Player with id '{player_id}' is already in the queue.")
             return
         
         # Check if the player is not in a match
         for index, match in self.matches.items():
             if player_id in [player.id for player in match.players]:
-                print(f"Player with id '{player_id}' is in a match.")
+                logger.info(f"Player with id '{player_id}' is in a match.")
                 return
         
         # Add player to queue
@@ -415,7 +403,7 @@ class MatchMaking:
         self.player_distribution["in_queue"] += 1
         self.player_distribution["idle"] -= 1
         
-        print(f"Queue: {self.queue}")
+        logging.debug(f"Added player {player_id} to queue.")
     
     def quit(self):
         self.status_dict["running"] = False
@@ -436,7 +424,8 @@ def handle_matches(matches_dict, status_dict):
                 status_dict[index] = result
             
             # Replace match in matches dict to write changes made by the step() function.
-            matches_dict[index] = match
+            if index in matches_dict:
+                matches_dict[index] = match
         
         # Tick clock (pygame clock is good enough for now).
         clock.tick(status_dict["ticks_per_second"])

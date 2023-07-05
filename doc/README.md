@@ -27,3 +27,7 @@ Today I fixed a major bug, if the window was being resized when a match ended, w
 04-07-2023
 There is a strange bug at the moment where sometimes (I *think* when the auto-queue feature was just turned on or off) some of the matches will fail to be removed from the matches dict, but the status_dict does not contain an entry for the match. This is very weird.
 I think one way to get to the issue is to set up proper logging.
+
+05-07-2023
+I *think* I fixed the issue from 04-07-2023. What I think happened is: the handle_matches() function runs asynchonously to the main thread handling removing of matches, the handle_matches() function calls match.step() and checks if the result is None, meanwhile the main thread removes that match from all dictionaries, subsequently the handle_matches() function sets matches_dict\[index\] = match, thus leaving only the entry in matches_dict and no entry in status_dict. I *think* I've solved the issue by checking if the index is already in the matches_dict before setting the entry equal to the match in handle_matches(), I haven't been able to reproduce the issue ever since.
+Creating a match adds the entry to the matches_dict, so this won't get messed up either.
