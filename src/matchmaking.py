@@ -229,19 +229,26 @@ class MatchMaking:
         # Check if any two players are no more than 100 ranking points apart.
         match_created = True
         while len(self.queue) > 1 and match_created:
+            # Sort queue in place to favor players who have been in queue longer.
+            self.queue = sorted(self.queue, key=lambda x: x[1])
             match_created = False
+            # Try to find matches in queue.
             for p1 in self.queue:
                 for p2 in self.queue:
-                    if p1 == p2:
+                    # Get indices of p1 and p2.
+                    p1_id = p1[0]
+                    p2_id = p2[0]
+                    
+                    if p1_id == p2_id:
                         continue
                     
-                    p1_ranking = self.leaderboard[p1]
-                    p2_ranking = self.leaderboard[p2]
+                    p1_ranking = self.leaderboard[p1_id]
+                    p2_ranking = self.leaderboard[p2_id]
                     if abs(p1_ranking - p2_ranking) <= 100:
                         # Create environment and add to matches dict.
                         env = Environment(player_size=self.player_size, ticks_per_second=self.ticks_per_second)
-                        env.add_player(copy.deepcopy(self.players[p1]))
-                        env.add_player(copy.deepcopy(self.players[p2]))
+                        env.add_player(copy.deepcopy(self.players[p1_id]))
+                        env.add_player(copy.deepcopy(self.players[p2_id]))
                         self.matches[self.match_number] = env
                         
                         # Add render index.
@@ -265,15 +272,13 @@ class MatchMaking:
                         
                         # Increment match number.
                         self.match_number += 1
-                        
-                        # Remove players from queue.
-                        indices_to_remove = []
-                        for index, q in enumerate(self.queue):
-                            if q == p1 or q == p2:
-                                indices_to_remove.append(index)
-                        for index in reversed(indices_to_remove):
-                            del self.queue[index]
                         match_created = True
+                        
+                        # Remove players from queue. Has to be done here 
+                        # because a player can be removed to become idle, or 
+                        # to enter a match.
+                        self.remove_player_from_queue(p1_id)
+                        self.remove_player_from_queue(p2_id)
                         
                         # Update player distribution.
                         self.player_distribution["in_game"] += 2
@@ -346,7 +351,7 @@ class MatchMaking:
             all_players = list(self.players.keys())
             
             # Get list of players who are in queue.
-            in_queue = self.queue
+            in_queue = [p[0] for p in self.queue]
             
             # Get list of players who are in game.
             in_game = []
@@ -375,35 +380,65 @@ class MatchMaking:
         self.player_distribution["idle"] += 1
     
     def add_player_to_queue(self, player_id):
-        # Check if the player exists
-        player_exists = False
-        for _, player in self.players.items():
-            if player.id == player_id:
-                player_exists = True
-                break
+        # Check if the player exists.
+        player_exists = player_id in [player.id for player in self.players.values()]
         if not player_exists:
-            logger.warning(f"Player with id '{player_id}' does not exist.")
+            logging.warning(f"Player with id {player_id} does not exist, not adding player to queue.")
             return
         
-        # Check if the player is not already in the queue
-        if player_id in self.queue:
-            logger.info(f"Player with id '{player_id}' is already in the queue.")
+        # Check if the player is not already in the queue.
+        player_in_queue = player_id in [entry[0] for entry in self.queue]
+        if player_in_queue:
+            logging.warning(f"Player with id {player_id} is already in queue, not adding player to queue.")
             return
         
-        # Check if the player is not in a match
+        # Check if the player is not in a match.
         for index, match in self.matches.items():
             if player_id in [player.id for player in match.players]:
-                logger.info(f"Player with id '{player_id}' is in a match.")
+                logging.warning(f"Player with id {player_id} is in a match, not adding player to queue.")
                 return
         
         # Add player to queue
-        self.queue.append(player_id)
+        self.queue.append((player_id, time.time()))
         
         # Update player distribution.
         self.player_distribution["in_queue"] += 1
         self.player_distribution["idle"] -= 1
         
         logging.debug(f"Added player {player_id} to queue.")
+    
+    def remove_player_from_queue(self, player_id):
+        # Check if the player exists.
+        player_exists = player_id in [player.id for player in self.players.values()]
+        if not player_exists:
+            logging.warning(f"Player with id {player_id} does not exist, not removing player from queue.")
+            return
+        
+        # Check if the player is in queue.
+        player_in_queue = player_id in [entry[0] for entry in self.queue]
+        if not player_in_queue:
+            logging.warning(f"Player with id {player_id} is not in queue, not removing player from queue.")
+            return
+        
+        # Remove player from queue.
+        queue_index = -1
+        for index, entry in enumerate(self.queue):
+            if player_id == entry[0]:
+                queue_index = index
+                break
+        if queue_index == -1:
+            logging.error(f"Failed to find player with id {player_id}. Player " \
+                "is in queue but was not found in queue, possibly a concurrency " \
+                "issue. This state should not be reached.")
+            return
+        del self.queue[queue_index]
+        
+        # Check if the operation was succesful.
+        player_in_queue = player_id in [entry[0] for entry in self.queue]
+        if player_in_queue:
+            logging.warning(f"Failed to remove player with id {player_id} from queue.")
+        else:
+            logging.debug(f"Removed player {player_id} from queue.")
     
     def quit(self):
         self.status_dict["running"] = False
@@ -416,16 +451,18 @@ def handle_matches(matches_dict, status_dict):
     
     while True:
         for index, match in matches_dict.items():
+            # Skip if the match is finished.
+            if match.is_finished():
+                continue
+            
             # Run environment step.
             result = match.step()
             
             # Update static dict.
-            if not (result is None):
-                status_dict[index] = result
+            status_dict[index] = result
             
             # Replace match in matches dict to write changes made by the step() function.
-            if index in matches_dict:
-                matches_dict[index] = match
+            matches_dict[index] = match
         
         # Tick clock (pygame clock is good enough for now).
         clock.tick(status_dict["ticks_per_second"])

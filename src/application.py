@@ -65,7 +65,7 @@ def render_text_right(display, text, position, font, color=(255, 255, 255)):
 def main():
     # Initialize logger for file output.
     #fmt_str = "%(asctime)s [%(levelname)-8.8s] %(message)s"
-    fmt_str = "%(asctime)s %(levelname)s %(message)s"
+    fmt_str = "%(asctime)s %(filename)s:line %(lineno)-5.5s %(levelname)s %(message)s"
     datefmt_str = "%Y-%m-%d %H:%M:%S"
     logging.basicConfig(level=logging.DEBUG, format=fmt_str, datefmt=datefmt_str, filename="log.txt", filemode="w")
     
@@ -100,7 +100,7 @@ def main():
     
     # Start render loop.
     update_options = {"auto_queue_idle_players": False}
-    render_options = {"player_position_text": True, "match_text": True, "match_timer": True, "healthbars": True}
+    render_options = {"player_position_text": False, "match_text": False, "match_timer": True, "healthbars": True}
     fps = 60
     clock = pygame.time.Clock()
     fpscounter = FPSCounter()
