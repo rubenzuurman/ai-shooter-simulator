@@ -132,7 +132,7 @@ class Environment:
             player.metadata["intersect_distances"] = [tup[0] if not (tup is None) else 0 for tup in closest_intersections]
             
             # Create neural network input array (if seeing nothing: set to 0, 
-            # also useful when inside someone else).
+            # also useful when inside another player).
             input_array = []
             for intersection in closest_intersections:
                 if intersection is None:

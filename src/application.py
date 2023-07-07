@@ -235,7 +235,7 @@ def main():
         lines_right_of_screen.append("Update options")
         
         auto_queue_idle_players_text = " True" if update_options["auto_queue_idle_players"] else "False"
-        lines_right_of_screen.append(f"Auto-queue idle players: {auto_queue_idle_players_text}")
+        lines_right_of_screen.append(f"Auto-queue idle players (Q): {auto_queue_idle_players_text}")
         
         for index, line in enumerate(lines_right_of_screen):
             render_text_right(display, line, (window_dimensions[0] - 10, 10 + 20 * index), font)

@@ -1,5 +1,6 @@
 # Plan
 
+### The general idea
 An environment in which geometrical objects and players can be placed. A 
 player has an update function for when in battle, the inputs are position, 
 orientation (n/s, e/w), and n rays emanating in the direction the player is 
@@ -11,6 +12,16 @@ using a matchmaking system, it also handles updating players' ratings.
 MatchMaking class: run separate process updating the current matches and to 
 accept new matches from a shared dictionary. Each match yield the current position and rotation of the players after updating.
 
+### Getting started
+1. Clone the repo using `git clone https://github.com/rubenzuurman/ai-shooter-simulator.git`.
+2. Create a virtual environment in the cloned folder using `python -m venv venv`.
+3. Activate the virtual environment using `source venv/Scripts/active` on windows, or `source venv/bin/activate` on posix systems ([documentation](https://docs.python.org/3/library/venv.html)).
+4. Install the required dependencies using `pip install -r requirements.txt`.
+5. Add players using (e.g.) `mm.add_player(Player())` in `src/application.py`.
+6. Implement your own player by creating a class which extends the `Player` class, and overriding the `update()` method. (Optional)
+7. Run the application using `python -u src/application.py`. A `log.txt` file will be generated in the top level of the cloned directory.
+
+### Some general comments
 13-05-2023
 Change of plan: I can't get intersections between lines working, so I might just ommit the whole idea of rays and give players the position of the opponent as well.
 

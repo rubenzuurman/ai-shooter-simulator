@@ -43,6 +43,17 @@ class Player:
         self.ray_sep_angle = ray_sep_angle
     
     def update(self, input_array):
+        """
+        The input array contains three floats for each ray. The first float 
+        is positive if the ray intersects an ally, the second float is positive 
+        if the ray intersects an environment object, and the third float is 
+        positive if the ray intersects an opponent. The intersection reported 
+        is always the closest intersection. The value in the array is the 
+        distance to the intersection divided by sqrt(8), in an effort to 
+        normalize the value (the dimensions of an environment are 2 units by 
+        2 units).
+        """
+        # Get north-south vector and east-west vector.
         ns = math.cos(self.rotation)
         ew = math.sin(self.rotation)
         
